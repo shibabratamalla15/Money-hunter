@@ -5,22 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Money Hunter — Track the Note</title>
 
-<!-- ============================= PWA META ============================= -->
 <meta name="theme-color" content="#1a202c">
 <meta name="description" content="Money Hunter — scan a banknote's serial number and follow the journey it's been on.">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Money Hunter">
-<link id="manifest-link" rel="manifest">
-<link id="apple-touch-icon" rel="apple-touch-icon">
+<link id="manifest-link" rel="manifest" href="/manifest.json">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
-  :root{
-    /* ---- Passport / travel-journal token set ---- */
+  :root {
     --paper:#fcf8f2;
     --paper-dark:#f1e9db;
     --ink:#1a202c;
@@ -28,835 +21,178 @@
     --stamp:#c53030;
     --gold:#b8923f;
     --note-purple:#6e5a7d;
-    --success:#2f7a4a;
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;}
-  body{
-    margin:0; background:#0d1117; font-family:'IBM Plex Sans',sans-serif;
-    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:24px;
-  }
-  .wrap{display:flex; flex-direction:column; align-items:center; width:100%;}
-
-  /* ---------- nav pills ---------- */
-  .demo-tabs{
-    display:flex; gap:8px; margin-bottom:16px; justify-content:center; flex-wrap:wrap; max-width:420px;
-  }
-  .demo-tabs button{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.04em;
-    padding:8px 14px; border-radius:20px; border:1px solid #333; background:#161b22;
-    color:#8b949e; cursor:pointer; text-transform:uppercase; transition:background .15s, color .15s, border-color .15s;
-  }
-  .demo-tabs button.on{ background:var(--stamp); color:#fff; border-color:var(--stamp); }
-  .demo-tabs button:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
-
-  .device{
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; margin:0; background:#0d1117; font-family:'IBM Plex Sans',sans-serif; display:flex; align-items:center; justify-content:center; }
+  .wrap { display:flex; flex-direction:column; align-items:center; width:100%; }
+  
+  .device {
     width:390px; max-width:100%; height:780px; background:var(--paper);
     border-radius:36px; overflow:hidden; position:relative;
-    box-shadow:0 30px 80px rgba(0,0,0,.5);
-    border:8px solid #111;
+    box-shadow:0 30px 80px rgba(0,0,0,.5); border:8px solid #111;
   }
-  .screen{position:absolute; inset:0; display:none; flex-direction:column;}
-  .screen.active{display:flex;}
+  .screen { position:absolute; inset:0; display:none; flex-direction:column; }
+  .screen.active { display:flex; }
 
-  /* ================= SCAN SCREEN ================= */
-  .cam-top{
-    padding:20px 20px 12px; display:flex; justify-content:space-between; align-items:center;
-    color:var(--paper); z-index:2; position:relative;
-  }
-  .brand{font-family:'Fraunces',serif; font-weight:600; font-size:15px; letter-spacing:.02em;}
-  .brand em{font-style:normal; color:var(--gold);}
-  .cam-view{
-    flex:1; position:relative; background:#10151c;
-    background-image:
-      radial-gradient(circle at 30% 20%, rgba(184,146,63,.18), transparent 40%),
-      radial-gradient(circle at 70% 80%, rgba(110,90,125,.2), transparent 45%);
-    display:flex; align-items:center; justify-content:center;
-  }
-  .viewfinder{ width:280px; height:150px; position:relative; }
-  .corner{ position:absolute; width:28px; height:28px; border:3px solid var(--gold); }
-  .corner.tl{top:0; left:0; border-right:none; border-bottom:none; border-radius:6px 0 0 0;}
-  .corner.tr{top:0; right:0; border-left:none; border-bottom:none; border-radius:0 6px 0 0;}
-  .corner.bl{bottom:0; left:0; border-right:none; border-top:none; border-radius:0 0 0 6px;}
-  .corner.br{bottom:0; right:0; border-left:none; border-top:none; border-radius:0 0 6px 0;}
-  .note-ghost{
-    position:absolute; inset:14px; border-radius:6px;
-    background:linear-gradient(135deg,#7d6a8f,#4f4059);
-    opacity:.35; display:flex; align-items:center; justify-content:center;
-    font-family:'IBM Plex Mono',monospace; color:#fff; font-size:11px; letter-spacing:.15em;
-    transition:opacity .2s;
-  }
-  .scan-line{
-    position:absolute; left:6%; right:6%; height:2px; background:var(--gold);
-    box-shadow:0 0 12px 2px var(--gold);
-    animation:sweep 2.2s ease-in-out infinite;
-  }
-  .scan-line.paused{ animation-play-state:paused; }
-  @keyframes sweep{ 0%,100%{ top:8%; opacity:.9;} 50%{ top:88%; opacity:.6;} }
-  .cam-hint{
-    text-align:center; color:#a8a196; font-size:12.5px; padding:18px 32px 4px;
-    font-family:'IBM Plex Sans',sans-serif; min-height:18px;
-  }
-  .cam-status{
-    text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.04em;
-    color:var(--gold); padding:2px 32px 6px; min-height:16px;
-  }
-  .cam-bottom{ padding:22px 24px 30px; display:flex; align-items:center; justify-content:center; gap:14px; }
-  .shutter{
-    width:68px; height:68px; border-radius:50%; background:var(--paper);
-    border:4px solid var(--gold); display:flex; align-items:center; justify-content:center;
-    cursor:pointer; transition:transform .1s;
-  }
-  .shutter::after{ content:''; width:52px; height:52px; border-radius:50%; background:var(--stamp); }
-  .shutter:active{ transform:scale(.94); }
-  .shutter[disabled]{ opacity:.5; cursor:default; }
-  .shutter[disabled]:active{ transform:none; }
+  /* SCAN SCREEN */
+  .cam-top { padding:20px 20px 12px; display:flex; justify-content:space-between; align-items:center; color:var(--paper); z-index:2; position:relative; background: #0d1117; }
+  .brand { font-family:'Fraunces',serif; font-weight:600; font-size:15px; }
+  .brand em { font-style:normal; color:var(--gold); }
+  
+  .cam-view { flex:1; position:relative; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  video { position:absolute; width:100%; height:100%; object-fit:cover; }
+  
+  .viewfinder { width:280px; height:150px; position:relative; z-index:2; }
+  .corner { position:absolute; width:28px; height:28px; border:3px solid var(--gold); }
+  .corner.tl { top:0; left:0; border-right:none; border-bottom:none; border-radius:6px 0 0 0; }
+  .corner.tr { top:0; right:0; border-left:none; border-bottom:none; border-radius:0 6px 0 0; }
+  .corner.bl { bottom:0; left:0; border-right:none; border-top:none; border-radius:0 0 0 6px; }
+  .corner.br { bottom:0; right:0; border-left:none; border-top:none; border-radius:0 0 6px 0; }
+  
+  .scan-line { position:absolute; left:6%; right:6%; height:2px; background:var(--gold); box-shadow:0 0 12px 2px var(--gold); animation:sweep 2.2s ease-in-out infinite; }
+  @keyframes sweep { 0%,100%{ top:8%; opacity:.9;} 50%{ top:88%; opacity:.6;} }
+  
+  .cam-hint { text-align:center; color:#a8a196; font-size:12.5px; padding:12px 20px 4px; background:#0d1117; }
+  .cam-status { text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); padding:2px 20px 10px; background:#0d1117; min-height:28px; }
+  .cam-bottom { padding:15px 24px 25px; display:flex; align-items:center; justify-content:center; background:#0d1117; }
+  
+  .shutter { width:68px; height:68px; border-radius:50%; background:var(--paper); border:4px solid var(--gold); cursor:pointer; position:relative; }
+  .shutter::after { content:''; position:absolute; top:4px; left:4px; width:52px; height:52px; border-radius:50%; background:var(--stamp); }
 
-  /* ================= REVEAL SCREEN — shared ================= */
-  .reveal{
-    padding:26px 24px 30px; overflow-y:auto; height:100%;
-    background:
-      linear-gradient(var(--paper-dark) 1px, transparent 1px) 0 0/100% 34px,
-      var(--paper);
-    position:relative;
-  }
-  .reveal::before{
-    content:''; position:absolute; left:38px; top:0; bottom:0; width:1px; background:rgba(197,48,48,.18);
-  }
-  .reveal-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;}
-  .eyebrow{
-    font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.14em;
-    color:var(--ink-soft); text-transform:uppercase;
-  }
-  .close-x{ color:var(--ink-soft); font-size:20px; cursor:pointer; line-height:1; background:none; border:none; padding:0; }
-
-  .denom-row{ display:flex; align-items:center; gap:12px; margin:14px 0 4px;}
-  .denom-chip{
-    width:46px; height:46px; border-radius:10px; background:var(--note-purple);
-    display:flex; align-items:center; justify-content:center; color:#fff;
-    font-family:'Fraunces',serif; font-weight:600; font-size:15px; flex-shrink:0;
-    box-shadow:inset 0 0 0 2px rgba(255,255,255,.15);
-  }
-  .denom-chip.alert{ background:var(--stamp); }
-  .serial{ font-family:'IBM Plex Mono',monospace; font-size:19px; font-weight:600; color:var(--ink); letter-spacing:.03em; }
-  .serial-sub{ font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-top:2px;}
-
-  .stamp-zone{ margin:22px 0 18px; display:flex; justify-content:center; position:relative; height:118px; }
-  .stamp{
-    width:118px; height:118px; border-radius:50%;
-    border:3px solid var(--stamp); color:var(--stamp);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-family:'Fraunces',serif; text-align:center; transform:rotate(-8deg);
-    animation:stampIn .5s cubic-bezier(.2,1.4,.4,1) .15s both;
-    position:relative;
-  }
-  .stamp::before{ content:''; position:absolute; inset:8px; border:1px solid var(--stamp); border-radius:50%; opacity:.5; }
-  .stamp .st-1{font-size:10px; letter-spacing:.12em; text-transform:uppercase; margin-top:6px;}
-  .stamp .st-2{font-size:17px; font-weight:600; margin:2px 0;}
-  .stamp .st-3{font-size:9.5px; letter-spacing:.1em; text-transform:uppercase;}
-  @keyframes stampIn{ 0%{ transform:rotate(-8deg) scale(2.4); opacity:0;} 60%{ opacity:1;} 100%{ transform:rotate(-8deg) scale(1); opacity:1;} }
-
-  .headline{ font-family:'Fraunces',serif; font-size:22px; font-weight:600; color:var(--ink); text-align:center; line-height:1.3; margin:2px 0 4px; }
-  .headline em{ font-style:normal; color:var(--stamp); }
-  .subline{ text-align:center; color:var(--ink-soft); font-size:13px; margin-bottom:22px; line-height:1.5;}
-
-  .divider{ border:none; border-top:1px dashed rgba(26,32,44,.25); margin:20px 0; }
-
-  .trail-title{
-    font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.12em;
-    text-transform:uppercase; color:var(--ink-soft); margin-bottom:14px;
-  }
-  .trail{ position:relative; padding-left:6px;}
-  .trail-item{ display:flex; gap:14px; position:relative; padding-bottom:22px;}
-  .trail-item:last-child{ padding-bottom:0;}
-  .trail-item::before{
-    content:''; position:absolute; left:9px; top:22px; bottom:0; width:1px;
-    border-left:2px dotted rgba(197,48,48,.4);
-  }
-  .trail-item:last-child::before{ display:none;}
-  .dot{
-    width:20px; height:20px; border-radius:50%; background:var(--paper);
-    border:2px solid var(--stamp); flex-shrink:0; display:flex; align-items:center; justify-content:center;
-    font-size:9px; color:var(--stamp); font-weight:700; margin-top:1px;
-  }
-  .dot.now{ background:var(--stamp); color:var(--paper); }
-  .trail-city{ font-family:'Fraunces',serif; font-size:15.5px; font-weight:600; color:var(--ink);}
-  .trail-meta{ font-size:11.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-top:2px;}
-
-  .stat-row{ display:flex; gap:10px; margin:22px 0 6px;}
-  .stat{ flex:1; background:rgba(255,255,255,.5); border:1px solid rgba(26,32,44,.1); border-radius:10px; padding:12px 10px; text-align:center; }
-  .stat-num{ font-family:'Fraunces',serif; font-size:20px; font-weight:600; color:var(--ink);}
-  .stat-label{ font-size:9.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.08em; margin-top:2px;}
-
-  .cta-row{ display:flex; gap:10px; margin-top:22px;}
-  .btn{
-    flex:1; text-align:center; padding:14px; border-radius:10px; font-size:13.5px;
-    font-family:'IBM Plex Sans',sans-serif; font-weight:600; cursor:pointer; border:none;
-  }
-  .btn-primary{ background:var(--ink); color:var(--paper); }
-  .btn-ghost{ background:transparent; color:var(--ink); border:1.5px solid rgba(26,32,44,.25); }
-  .btn:focus-visible, .close-x:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
-
-  .fraud-flag{
-    margin-top:18px; background:rgba(197,48,48,.08); border:1px solid rgba(197,48,48,.3);
-    border-radius:10px; padding:12px 14px; font-size:12px; color:var(--stamp);
-    display:flex; gap:8px; align-items:flex-start; font-family:'IBM Plex Sans',sans-serif;
-  }
-
-  /* ================= SHARE-CARD SCREEN ================= */
-  .share-wrap{ flex:1; background:#1a1d24; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; gap:16px; }
-  .share-frame-label{ font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em; color:#6b7280; text-transform:uppercase; }
-  .card{
-    width:264px; aspect-ratio:9/16; border-radius:18px; overflow:hidden; position:relative;
-    background: linear-gradient(var(--paper-dark) 1px, transparent 1px) 0 0/100% 30px, var(--paper);
-    box-shadow:0 14px 40px rgba(0,0,0,.5);
-    display:flex; flex-direction:column; padding:22px 18px;
-  }
-  .card::after{ content:''; position:absolute; inset:8px; border:1px solid rgba(26,32,44,.15); border-radius:12px; pointer-events:none; }
-  .card-brand{ font-family:'Fraunces',serif; font-weight:600; font-size:13px; color:var(--ink); text-align:center; letter-spacing:.02em; }
-  .card-brand em{ font-style:normal; color:var(--stamp); }
-  .card-denom{ text-align:center; margin-top:22px; font-family:'Fraunces',serif; font-weight:600; font-size:15px; color:var(--ink-soft); }
-  .card-serial{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-soft); letter-spacing:.06em; margin-top:2px; }
-  .card-headline{ text-align:center; font-family:'Fraunces',serif; font-weight:600; font-size:21px; color:var(--ink); line-height:1.25; margin-top:16px; }
-  .card-headline em{ font-style:normal; color:var(--stamp); }
-  .card-stamps{ flex:1; display:flex; align-items:center; justify-content:center; gap:8px; margin:14px 0; flex-wrap:wrap; }
-  .mini-stamp{
-    width:52px; height:52px; border-radius:50%; border:2px solid var(--stamp); color:var(--stamp);
-    display:flex; align-items:center; justify-content:center; text-align:center;
-    font-family:'IBM Plex Mono',monospace; font-size:7.5px; font-weight:600; line-height:1.25;
-    transform:rotate(-6deg); flex-shrink:0;
-  }
-  .mini-stamp:nth-child(2){ transform:rotate(4deg); }
-  .mini-stamp:nth-child(3n){ transform:rotate(-3deg); background:var(--stamp); color:var(--paper);}
-  .card-route{ text-align:center; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft); letter-spacing:.03em; padding:0 6px; }
-  .card-stats{ display:flex; justify-content:center; gap:18px; margin-top:14px;}
-  .card-stat-num{ font-family:'Fraunces',serif; font-weight:600; font-size:16px; color:var(--ink); text-align:center;}
-  .card-stat-label{ font-size:7.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.08em; text-align:center;}
-  .card-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding-top:12px; border-top:1px dashed rgba(26,32,44,.25); }
-  .card-cta{ font-family:'IBM Plex Mono',monospace; font-size:8.5px; color:var(--stamp); letter-spacing:.04em;}
-  .card-qr{ width:26px; height:26px; border-radius:4px; background:repeating-linear-gradient(45deg, var(--ink) 0 2px, transparent 2px 4px); opacity:.85; }
-  .share-actions{ display:flex; gap:10px; width:264px;}
-  .share-btn{ flex:1; padding:12px; border-radius:10px; text-align:center; font-size:12.5px; font-family:'IBM Plex Sans',sans-serif; font-weight:600; cursor:pointer; border:none; }
-  .share-btn.wa{ background:#25D366; color:#06210f; }
-  .share-btn.ig{ background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af); color:#fff; }
-  .share-btn.save{ background:#2a2f38; color:#cbd3dc; }
-  .share-btn:focus-visible{ outline:2px solid var(--gold); outline-offset:2px; }
-
-  /* ================= LEADERBOARD SCREEN ================= */
-  .board{ padding:24px 22px 30px; overflow-y:auto; height:100%; background:var(--paper);}
-  .board-top{ text-align:center; margin-bottom:4px;}
-  .board-title{ font-family:'Fraunces',serif; font-weight:600; font-size:22px; color:var(--ink);}
-  .board-title em{ font-style:normal; color:var(--stamp);}
-  .board-sub{ font-size:12px; color:var(--ink-soft); margin-top:2px;}
-  .seg{ display:flex; margin:18px 0 8px; background:rgba(26,32,44,.06); border-radius:10px; padding:3px; }
-  .seg-opt{
-    flex:1; text-align:center; padding:8px; border-radius:8px; font-size:11.5px;
-    font-family:'IBM Plex Mono',monospace; letter-spacing:.03em; color:var(--ink-soft); cursor:pointer; border:none; background:none;
-  }
-  .seg-opt.on{ background:var(--ink); color:var(--paper);}
-  .rank-row{ display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid rgba(26,32,44,.09); }
-  .rank-num{
-    width:26px; height:26px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
-    border:1.5px solid var(--ink-soft); color:var(--ink-soft);
-  }
-  .rank-row.top .rank-num{ background:var(--stamp); border-color:var(--stamp); color:var(--paper);}
-  .rank-row.mine{ background:rgba(184,146,63,.1); border-radius:10px; padding-left:8px; padding-right:8px; }
-  .rank-main{ flex:1; }
-  .rank-name{ font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; color:var(--ink);}
-  .rank-sub{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--ink-soft); margin-top:1px;}
-  .rank-val{ text-align:right; font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--stamp); font-weight:600;}
-  .rank-val-label{ font-size:8.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.06em; text-align:right;}
-  .your-row{
-    margin-top:16px; background:rgba(184,146,63,.12); border:1px dashed var(--gold);
-    border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;
-  }
-  .your-row-label{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft); letter-spacing:.06em; text-transform:uppercase;}
-  .your-row-val{ font-family:'Fraunces',serif; font-weight:600; font-size:15px; color:var(--ink); margin-top:2px;}
-
-  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
-  @media (prefers-reduced-motion: reduce){
-    .scan-line{ animation:none; top:48%; }
-    .stamp{ animation:none; }
-  }
+  /* REVEAL SCREEN */
+  .reveal { padding:26px 24px; overflow-y:auto; height:100%; background:var(--paper); position:relative; }
+  .close-x { position:absolute; top:20px; right:20px; font-size:24px; border:none; background:none; cursor:pointer; }
+  .serial-title { font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:700; color:var(--ink); margin-top:20px; }
+  .status-badge { display:inline-block; padding:4px 10px; background:var(--gold); color:#fff; border-radius:6px; font-size:12px; font-family:'IBM Plex Mono',monospace; margin-bottom:10px; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="demo-tabs" role="tablist" aria-label="Money Hunter screen states">
-    <button class="on" data-target="scan" role="tab" aria-selected="true">1 · Scan viewfinder</button>
-    <button data-target="first" role="tab" aria-selected="false">2 · First scan</button>
-    <button data-target="repeat" role="tab" aria-selected="false">3 · Repeat scan</button>
-    <button data-target="flag" role="tab" aria-selected="false">4 · Something's off</button>
-    <button data-target="share" role="tab" aria-selected="false">5 · Share card</button>
-    <button data-target="board" role="tab" aria-selected="false">6 · Leaderboard</button>
-  </div>
 
+<div class="wrap">
   <div class="device">
 
-    <!-- SCREEN 1: SCAN VIEWFINDER -->
+    <!-- CAMERA SCREEN -->
     <div class="screen active" id="scan">
       <div class="cam-top">
         <div class="brand">Money <em>Hunter</em></div>
-        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; opacity:.7;">₹ MODE</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px;">LIVE SCAN</div>
       </div>
       <div class="cam-view">
+        <video id="webcam" autoplay playsinline muted></video>
         <div class="viewfinder">
-          <div class="note-ghost" id="viewfinderLabel">SERIAL NUMBER</div>
           <div class="corner tl"></div>
           <div class="corner tr"></div>
           <div class="corner bl"></div>
           <div class="corner br"></div>
-          <div class="scan-line" id="scanLine"></div>
+          <div class="scan-line"></div>
         </div>
       </div>
-      <div class="cam-hint" id="camHint">Line up the serial number strip on the note</div>
-      <div class="cam-status" id="camStatus" role="status" aria-live="polite">&nbsp;</div>
+      <div class="cam-hint" id="camHint">Allow camera access and align serial number</div>
+      <div class="cam-status" id="camStatus">Initializing camera...</div>
       <div class="cam-bottom">
-        <button class="shutter" id="shutterBtn" aria-label="Capture frame"></button>
+        <button class="shutter" id="shutterBtn"></button>
       </div>
     </div>
 
-    <!-- SCREEN 2: FIRST SCAN -->
-    <div class="screen" id="first">
+    <!-- REVEAL SCREEN -->
+    <div class="screen" id="reveal">
       <div class="reveal">
-        <div class="reveal-top">
-          <div class="eyebrow">Scan result</div>
-          <button class="close-x" data-target="scan" aria-label="Close">&times;</button>
-        </div>
-        <div class="denom-row">
-          <div class="denom-chip" id="first-denom-chip">500</div>
-          <div>
-            <div class="serial" id="first-serial">4AN 782914</div>
-            <div class="serial-sub" id="first-serial-sub">₹500 · SERIES 4AN</div>
-          </div>
-        </div>
-
-        <div class="stamp-zone">
-          <div class="stamp">
-            <div class="st-1">First</div>
-            <div class="st-2">Sighting</div>
-            <div class="st-3" id="first-city">Udaipur</div>
-          </div>
-        </div>
-
-        <div class="headline">You found it <em>first.</em></div>
-        <div class="subline">This is the earliest known scan of this note.<br>Its journey starts here — with you.</div>
-
-        <hr class="divider">
-        <div class="trail-title">Logged</div>
-        <div class="trail" id="first-trail">
-          <div class="trail-item">
-            <div class="dot now">•</div>
-            <div>
-              <div class="trail-city">Udaipur, Rajasthan</div>
-              <div class="trail-meta">Today, 4:12 PM · Scan #1</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cta-row">
-          <button class="btn btn-primary" data-target="share">Share this find</button>
-          <button class="btn btn-ghost" data-target="scan">Scan another</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCREEN 3: REPEAT SCAN WITH TRAIL -->
-    <div class="screen" id="repeat">
-      <div class="reveal">
-        <div class="reveal-top">
-          <div class="eyebrow">Scan result</div>
-          <button class="close-x" data-target="scan" aria-label="Close">&times;</button>
-        </div>
-        <div class="denom-row">
-          <div class="denom-chip" id="repeat-denom-chip">500</div>
-          <div>
-            <div class="serial" id="repeat-serial">2CJ 116503</div>
-            <div class="serial-sub" id="repeat-serial-sub">₹500 · SERIES 2CJ</div>
-          </div>
-        </div>
-
-        <div class="stamp-zone">
-          <div class="stamp">
-            <div class="st-1">Scan</div>
-            <div class="st-2" id="repeat-scan-no">No. 4</div>
-            <div class="st-3" id="repeat-city">Udaipur</div>
-          </div>
-        </div>
-
-        <div class="headline">This note has <em>history.</em></div>
-        <div class="subline" id="repeat-subline">Seen 3 times before yours, across 3 cities.</div>
-
-        <div class="stat-row">
-          <div class="stat"><div class="stat-num" id="repeat-stat-cities">3</div><div class="stat-label">Cities</div></div>
-          <div class="stat"><div class="stat-num" id="repeat-stat-days">118</div><div class="stat-label">Days</div></div>
-          <div class="stat"><div class="stat-num" id="repeat-stat-hands">4</div><div class="stat-label">Hands</div></div>
-        </div>
-
-        <hr class="divider">
-        <div class="trail-title">Journey</div>
-        <div class="trail" id="repeat-trail">
-          <div class="trail-item">
-            <div class="dot">1</div>
-            <div>
-              <div class="trail-city">Kolkata, West Bengal</div>
-              <div class="trail-meta">14 Apr 2026 · First sighting</div>
-            </div>
-          </div>
-          <div class="trail-item">
-            <div class="dot">2</div>
-            <div>
-              <div class="trail-city">Guwahati, Assam</div>
-              <div class="trail-meta">2 Jun 2026 · 49 days later</div>
-            </div>
-          </div>
-          <div class="trail-item">
-            <div class="dot">3</div>
-            <div>
-              <div class="trail-city">Jaipur, Rajasthan</div>
-              <div class="trail-meta">30 Jul 2026 · 58 days later</div>
-            </div>
-          </div>
-          <div class="trail-item">
-            <div class="dot now">•</div>
-            <div>
-              <div class="trail-city">Udaipur, Rajasthan</div>
-              <div class="trail-meta">Today · 11 days later</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cta-row">
-          <button class="btn btn-primary" data-target="share">Share this journey</button>
-          <button class="btn btn-ghost" data-target="scan">Scan another</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCREEN 4: SOMETHING'S OFF / VELOCITY CONFLICT -->
-    <div class="screen" id="flag">
-      <div class="reveal">
-        <div class="reveal-top">
-          <div class="eyebrow">Scan result</div>
-          <button class="close-x" data-target="scan" aria-label="Close">&times;</button>
-        </div>
-        <div class="denom-row">
-          <div class="denom-chip alert" id="flag-denom-chip">500</div>
-          <div>
-            <div class="serial" id="flag-serial">9RT 004417</div>
-            <div class="serial-sub" id="flag-serial-sub">₹500 · SERIES 9RT</div>
-          </div>
-        </div>
-
-        <div class="stamp-zone">
-          <div class="stamp" style="border-color:var(--stamp);">
-            <div class="st-1">Serial</div>
-            <div class="st-2">Conflict</div>
-            <div class="st-3">Review</div>
-          </div>
-        </div>
-
-        <div class="headline">Something's <em>off.</em></div>
-        <div class="subline" id="flag-subline">This serial number was scanned in Chennai 40 minutes ago — too far from Udaipur to be the same physical note.</div>
-
-        <div class="fraud-flag">
-          ⚠ Likely duplicate or cloned serial number. This scan has been flagged for review and won't affect either location's history.
-        </div>
-
-        <div class="cta-row">
-          <button class="btn btn-primary" id="flag-report">Report note</button>
-          <button class="btn btn-ghost" data-target="scan">Dismiss</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCREEN 5: SHARE CARD -->
-    <div class="screen" id="share">
-      <div class="share-wrap">
-        <div class="share-frame-label">Preview · Instagram Story / WhatsApp Status</div>
-        <div class="card">
-          <div class="card-brand">Money <em>Hunter</em></div>
-          <div class="card-denom" id="card-denom">₹500 Note</div>
-          <div class="card-serial" id="card-serial">2CJ •• ••03</div>
-          <div class="card-headline" id="card-headline">This note has been on a <em>journey.</em></div>
-          <div class="card-stamps" id="card-stamps">
-            <div class="mini-stamp">KOL<br>#1</div>
-            <div class="mini-stamp">GUW<br>#2</div>
-            <div class="mini-stamp">UDR<br>#4</div>
-          </div>
-          <div class="card-route" id="card-route">Kolkata → Guwahati → Jaipur → Udaipur</div>
-          <div class="card-stats" id="card-stats">
-            <div><div class="card-stat-num">3</div><div class="card-stat-label">Cities</div></div>
-            <div><div class="card-stat-num">118</div><div class="card-stat-label">Days</div></div>
-            <div><div class="card-stat-num">4</div><div class="card-stat-label">Hands</div></div>
-          </div>
-          <div class="card-footer">
-            <div class="card-cta">SCAN YOUR OWN →</div>
-            <div class="card-qr"></div>
-          </div>
-        </div>
-        <div class="share-actions">
-          <button class="share-btn wa">WhatsApp</button>
-          <button class="share-btn ig">Instagram</button>
-          <button class="share-btn save">Save</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SCREEN 6: LEADERBOARD -->
-    <div class="screen" id="board">
-      <div class="board">
-        <div class="board-top">
-          <div class="board-title">Most <em>Traveled</em></div>
-          <div class="board-sub">Updated today · all-India</div>
-        </div>
-
-        <div class="seg" role="tablist" aria-label="Leaderboard category">
-          <button class="seg-opt on" role="tab" aria-selected="true">Notes</button>
-          <button class="seg-opt" role="tab" aria-selected="false">Cities</button>
-          <button class="seg-opt" role="tab" aria-selected="false">Hunters</button>
-        </div>
-
-        <div class="rank-row top">
-          <div class="rank-num">1</div>
-          <div class="rank-main">
-            <div class="rank-name">₹500 · 7QF 442018</div>
-            <div class="rank-sub">Kochi → Nagpur → Delhi → Leh</div>
-          </div>
-          <div>
-            <div class="rank-val">7</div>
-            <div class="rank-val-label">Cities</div>
-          </div>
-        </div>
-        <div class="rank-row top">
-          <div class="rank-num">2</div>
-          <div class="rank-main">
-            <div class="rank-name">₹200 · 1BM 990072</div>
-            <div class="rank-sub">Pune → Surat → Bhopal</div>
-          </div>
-          <div>
-            <div class="rank-val">6</div>
-            <div class="rank-val-label">Cities</div>
-          </div>
-        </div>
-        <div class="rank-row">
-          <div class="rank-num">3</div>
-          <div class="rank-main">
-            <div class="rank-name">₹100 · 3XK 118820</div>
-            <div class="rank-sub">Lucknow → Patna → Ranchi</div>
-          </div>
-          <div>
-            <div class="rank-val">5</div>
-            <div class="rank-val-label">Cities</div>
-          </div>
-        </div>
-        <div class="rank-row mine">
-          <div class="rank-num">4</div>
-          <div class="rank-main">
-            <div class="rank-name">₹500 · 2CJ 116503</div>
-            <div class="rank-sub">Kolkata → Guwahati → Jaipur → Udaipur</div>
-          </div>
-          <div>
-            <div class="rank-val">4</div>
-            <div class="rank-val-label">Cities</div>
-          </div>
-        </div>
-        <div class="rank-row">
-          <div class="rank-num">5</div>
-          <div class="rank-main">
-            <div class="rank-name">₹50 · 9DP 556631</div>
-            <div class="rank-sub">Indore → Ahmedabad</div>
-          </div>
-          <div>
-            <div class="rank-val">4</div>
-            <div class="rank-val-label">Cities</div>
-          </div>
-        </div>
-
-        <div class="your-row">
-          <div>
-            <div class="your-row-label">Your best find</div>
-            <div class="your-row-val">Rank #4 · 2CJ 116503</div>
-          </div>
-          <div style="font-size:20px;" aria-hidden="true">🏅</div>
-        </div>
+        <button class="close-x" id="closeBtn">&times;</button>
+        <div class="status-badge" id="scanStatusBadge">SCAN SUCCESS</div>
+        <div class="serial-title" id="scannedSerial">--- ---</div>
+        <p id="scanDetails" style="color:var(--ink-soft); font-size:14px; margin-top:10px;">Processing complete. Check Supabase database for record.</p>
+        <button id="scanAgainBtn" style="margin-top:30px; width:100%; padding:12px; background:var(--ink); color:#fff; border:none; border-radius:8px; font-weight:600; cursor:pointer;">Scan Another Note</button>
       </div>
     </div>
 
   </div>
-  <p class="sr-only" id="liveRegionHelp">Demo note: the shutter button runs a simulated multi-frame OCR consensus using the real ConsensusTracker class from ocr-engine.js, then routes to the matching result screen.</p>
 </div>
 
-<!-- ============================================================
-     Integration layer: wires the real ocr-engine.js module into
-     the UI. In production, processFrame(imageSource) runs against
-     live camera frames; here, simulateFrame() stands in for the
-     camera + Tesseract pass so the consensus flow can be exercised
-     without device camera access, while ConsensusTracker itself
-     (the actual exported class) drives every decision.
-     ============================================================ -->
 <script type="module">
-  import {
-    ConsensusTracker,
-    isValidSerialFormat,
-    assembleScanPayload,
-    MIN_CONSENSUS_FRAMES,
-  } from './ocr-engine.js';
+  import { isValidSerialFormat } from './ocr-engine.js';
 
-  // ---------------------------------------------------------------
-  // Demo data layer — stands in for the /v1/scans + notes tables.
-  // Each entry is what the server would already know about a serial
-  // before this scan; the client only ever knows city_label + counts.
-  // ---------------------------------------------------------------
-  const NOTE_DB = {
-    '4AN 782914': {
-      status: 'first',
-      denom: 500,
-      series: '4AN',
-      city: 'Udaipur',
-      trail: [{ city: 'Udaipur, Rajasthan', meta: 'Today, 4:12 PM · Scan #1', now: true }],
-    },
-    '2CJ 116503': {
-      status: 'repeat',
-      denom: 500,
-      series: '2CJ',
-      city: 'Udaipur',
-      scanNo: 4,
-      cities: 3, days: 118, hands: 4,
-      trail: [
-        { num: 1, city: 'Kolkata, West Bengal', meta: '14 Apr 2026 · First sighting' },
-        { num: 2, city: 'Guwahati, Assam', meta: '2 Jun 2026 · 49 days later' },
-        { num: 3, city: 'Jaipur, Rajasthan', meta: '30 Jul 2026 · 58 days later' },
-        { now: true, city: 'Udaipur, Rajasthan', meta: 'Today · 11 days later' },
-      ],
-      shareHeadline: 'This note has been on a <em>journey.</em>',
-      shareStamps: ['KOL<br>#1', 'GUW<br>#2', 'UDR<br>#4'],
-      route: 'Kolkata → Guwahati → Jaipur → Udaipur',
-      serialMasked: '2CJ •• ••03',
-    },
-    '9RT 004417': {
-      status: 'flag',
-      denom: 500,
-      series: '9RT',
-      conflictCity: 'Chennai',
-      conflictMinsAgo: 40,
-      thisCity: 'Udaipur',
-    },
-  };
-  const DEMO_SERIALS = Object.keys(NOTE_DB);
+  const video = document.getElementById('webcam');
+  const camStatus = document.getElementById('camStatus');
+  const shutterBtn = document.getElementById('shutterBtn');
+  const scanScreen = document.getElementById('scan');
+  const revealScreen = document.getElementById('reveal');
 
-  // Mock per-frame OCR reads: each simulated scan feeds MIN_CONSENSUS_FRAMES
-  // frames into the SAME ConsensusTracker instance the module exports, so
-  // acceptance is decided by the real class, not by demo scripting.
-  function mockFrameConfidence(){ return 0.7 + Math.random() * 0.25; }
-
-  const tracker = new ConsensusTracker();
-  let demoIndex = 0;
-
-  const $ = (id) => document.getElementById(id);
-  const screens = document.querySelectorAll('.screen');
-  const tabs = document.querySelectorAll('.demo-tabs button');
-
-  function showScreen(id){
-    screens.forEach((s) => s.classList.toggle('active', s.id === id));
-    tabs.forEach((t) => {
-      const on = t.dataset.target === id;
-      t.classList.toggle('on', on);
-      t.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
+  // Start Real Camera Stream
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+      video.srcObject = stream;
+      camStatus.textContent = "Camera active. Tap shutter to capture.";
+    } catch (err) {
+      console.error("Camera access error:", err);
+      camStatus.textContent = "Error: Camera permission denied or unsupported.";
+    }
   }
 
-  document.querySelectorAll('[data-target]').forEach((el) => {
-    el.addEventListener('click', () => {
-      showScreen(el.dataset.target);
-      if (el.dataset.target === 'scan') resetScanUI();
-    });
-  });
-
-  document.querySelectorAll('.seg-opt').forEach((el) => {
-    el.addEventListener('click', () => {
-      document.querySelectorAll('.seg-opt').forEach((o) => { o.classList.remove('on'); o.setAttribute('aria-selected','false'); });
-      el.classList.add('on');
-      el.setAttribute('aria-selected','true');
-    });
-  });
-
-  // ---------------------------------------------------------------
-  // Scan viewfinder simulation
-  // ---------------------------------------------------------------
-  const shutterBtn = $('shutterBtn');
-  const camHint = $('camHint');
-  const camStatus = $('camStatus');
-  const scanLine = $('scanLine');
-  const viewfinderLabel = $('viewfinderLabel');
-
-  function resetScanUI(){
-    camHint.textContent = 'Line up the serial number strip on the note';
-    camStatus.textContent = '\u00A0';
-    scanLine.classList.remove('paused');
-    viewfinderLabel.textContent = 'SERIAL NUMBER';
-    shutterBtn.disabled = false;
-  }
-
-  shutterBtn.addEventListener('click', runSimulatedScan);
-
-  async function runSimulatedScan(){
-    shutterBtn.disabled = true;
-    scanLine.classList.remove('paused');
-    tracker.reset();
-
-    const serial = DEMO_SERIALS[demoIndex % DEMO_SERIALS.length];
-    demoIndex += 1;
-
-    if (!isValidSerialFormat(serial)) {
-      // Guard mirrors the real engine's own validation choke point.
-      camStatus.textContent = 'Rejected: invalid serial format';
-      shutterBtn.disabled = false;
+  // Shutter Click Handler: Capture image from video stream
+  shutterBtn.addEventListener('click', () => {
+    if (!video.srcObject) {
+      alert("Camera is not active yet.");
       return;
     }
 
-    viewfinderLabel.textContent = serial;
-    camHint.textContent = 'Reading serial…';
+    camStatus.textContent = "Capturing & processing scan...";
 
-    let accepted = null;
-    for (let frame = 1; frame <= MIN_CONSENSUS_FRAMES; frame++) {
-      await wait(650);
-      const confidence = mockFrameConfidence();
-      camStatus.textContent = `Frame ${frame}/${MIN_CONSENSUS_FRAMES} · read "${serial}" (${Math.round(confidence * 100)}% conf.)`;
-      accepted = tracker.submit(serial, confidence);
+    // Temporary canvas to grab current frame
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    // Prompt user for OCR serial entry or auto-fill input (for testing backend POST API)
+    const detectedSerial = prompt("Enter Note Serial Number (Format: 4AN 782914):", "4AN 782914");
+
+    if (detectedSerial && isValidSerialFormat(detectedSerial)) {
+      document.getElementById('scannedSerial').textContent = detectedSerial;
+      scanScreen.classList.remove('active');
+      revealScreen.classList.add('active');
+      
+      // POST scan to Express API backend
+      sendScanToServer(detectedSerial);
+    } else {
+      camStatus.textContent = "Invalid Serial Format! Try again.";
     }
+  });
 
-    scanLine.classList.add('paused');
-    camHint.textContent = 'Consensus reached — locking serial';
-    await wait(350);
-
-    // Real payload assembly path from ocr-engine.js. Geolocation is not
-    // available in this sandboxed preview, so we fall back to a mock
-    // geohash6 rather than letting the demo dead-end on a permission
-    // prompt — assembleScanPayload's shape is still exactly what a live
-    // build would send to /v1/scans.
-    let payload;
+  async function sendScanToServer(serial) {
     try {
-      payload = await assembleScanPayload({
-        serial_number: accepted.serial_number,
-        ocr_confidence: accepted.ocr_confidence,
-        scan_source: 'citizen',
-        node_type: null,
+      const res = await fetch('/v1/scans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serial_number: serial,
+          geohash6: "tsj2k9", // Default geohash
+          scan_source: "citizen"
+        })
       });
-    } catch (err) {
-      payload = {
-        local_id: crypto.randomUUID(),
-        serial_number: accepted.serial_number,
-        geohash6: 'tsj2k9', // fallback demo cell — geolocation unavailable in preview
-        captured_at: new Date().toISOString(),
-        scan_source: 'citizen',
-        node_type: null,
-        ocr_confidence: accepted.ocr_confidence,
-      };
+      const data = await res.json();
+      console.log("Server response:", data);
+    } catch (e) {
+      console.error("Failed to post scan:", e);
     }
-
-    document.dispatchEvent(new CustomEvent('mh:scan-consensus', {
-      detail: { payload, note: NOTE_DB[serial], serial },
-    }));
   }
 
-  function wait(ms){ return new Promise((r) => setTimeout(r, ms)); }
+  document.getElementById('closeBtn').addEventListener('click', resetUI);
+  document.getElementById('scanAgainBtn').addEventListener('click', resetUI);
 
-  // ---------------------------------------------------------------
-  // Consensus event → route to the matching reveal screen and
-  // populate it from the (mock) server-side note record.
-  // ---------------------------------------------------------------
-  document.addEventListener('mh:scan-consensus', (e) => {
-    const { note, serial } = e.detail;
-    if (!note) { resetScanUI(); return; }
-
-    if (note.status === 'first') populateFirst(serial, note);
-    if (note.status === 'repeat') populateRepeat(serial, note);
-    if (note.status === 'flag') populateFlag(serial, note);
-
-    showScreen(note.status === 'first' ? 'first' : note.status === 'repeat' ? 'repeat' : 'flag');
-    setTimeout(resetScanUI, 0);
-  });
-
-  function populateFirst(serial, note){
-    $('first-serial').textContent = serial;
-    $('first-serial-sub').textContent = `₹${note.denom} · SERIES ${note.series}`;
-    $('first-denom-chip').textContent = note.denom;
-    $('first-city').textContent = note.city;
+  function resetUI() {
+    revealScreen.classList.remove('active');
+    scanScreen.classList.add('active');
+    camStatus.textContent = "Camera active. Tap shutter to capture.";
   }
 
-  function populateRepeat(serial, note){
-    $('repeat-serial').textContent = serial;
-    $('repeat-serial-sub').textContent = `₹${note.denom} · SERIES ${note.series}`;
-    $('repeat-denom-chip').textContent = note.denom;
-    $('repeat-scan-no').textContent = `No. ${note.scanNo}`;
-    $('repeat-city').textContent = note.city;
-    $('repeat-subline').textContent = `Seen ${note.scanNo - 1} times before yours, across ${note.cities} cities.`;
-    $('repeat-stat-cities').textContent = note.cities;
-    $('repeat-stat-days').textContent = note.days;
-    $('repeat-stat-hands').textContent = note.hands;
-
-    syncShareCard(serial, note);
-  }
-
-  function populateFlag(serial, note){
-    $('flag-serial').textContent = serial;
-    $('flag-serial-sub').textContent = `₹${note.denom} · SERIES ${note.series}`;
-    $('flag-denom-chip').textContent = note.denom;
-    $('flag-subline').textContent = `This serial number was scanned in ${note.conflictCity} ${note.conflictMinsAgo} minutes ago — too far from ${note.thisCity} to be the same physical note.`;
-  }
-
-  function syncShareCard(serial, note){
-    if (!note.route) return;
-    $('card-denom').textContent = `₹${note.denom} Note`;
-    $('card-serial').textContent = note.serialMasked || serial;
-    $('card-headline').innerHTML = note.shareHeadline;
-    $('card-route').textContent = note.route;
-    $('card-stamps').innerHTML = (note.shareStamps || []).map((s) => `<div class="mini-stamp">${s}</div>`).join('');
-    $('card-stats').innerHTML = `
-      <div><div class="card-stat-num">${note.cities}</div><div class="card-stat-label">Cities</div></div>
-      <div><div class="card-stat-num">${note.days}</div><div class="card-stat-label">Days</div></div>
-      <div><div class="card-stat-num">${note.hands}</div><div class="card-stat-label">Hands</div></div>
-    `;
-  }
-
-  $('flag-report').addEventListener('click', () => {
-    $('flag-report').textContent = 'Reported';
-    $('flag-report').disabled = true;
-  });
-
-  // ---------------------------------------------------------------
-  // PWA scaffolding — inline manifest + best-effort service worker.
-  // Kept self-contained so this stays a single-file prototype.
-  // ---------------------------------------------------------------
-  const manifest = {
-    name: 'Money Hunter',
-    short_name: 'MoneyHunter',
-    description: "Track the note, not the person.",
-    start_url: '.',
-    display: 'standalone',
-    background_color: '#0d1117',
-    theme_color: '#1a202c',
-    icons: [],
-  };
-  try {
-    const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
-    document.getElementById('manifest-link').href = URL.createObjectURL(blob);
-  } catch (err) { /* manifest is a progressive enhancement — ignore if blocked */ }
-
-  if ('serviceWorker' in navigator) {
-    const swSource = `
-      self.addEventListener('install', () => self.skipWaiting());
-      self.addEventListener('activate', () => self.clients.claim());
-      self.addEventListener('fetch', () => {}); // offline caching intentionally out of scope for this prototype
-    `;
-    try {
-      const swBlob = new Blob([swSource], { type: 'application/javascript' });
-      navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
-    } catch (err) { /* sandboxed preview environments may block SW registration */ }
-  }
+  startCamera();
 </script>
+
 </body>
-</html>
+            </html>
+  
