@@ -1,60 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Money Hunter</title>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.min.js@5/dist/tesseract.min.js"></script>
-<style>
-    :root { --paper: #fcf8f2; --ink: #1a202c; --gold: #b8923f; --bg-dark: #0d1117; }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body, html { height: 100%; font-family: sans-serif; background: var(--bg-dark); overflow: hidden; }
-    
-    .screen { display: none; height: 100%; width: 100%; position: absolute; top:0; left:0; }
-    .screen.active { display: flex; flex-direction: column; z-index: 10; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Hunter — Core Engine</title>
+    <!-- OCR Engine -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.min.js@5/dist/tesseract.min.js"></script>
+    <style>
+        :root { --paper: #fcf8f2; --ink: #1a202c; --gold: #b8923f; --bg-dark: #0d1117; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg-dark); font-family: 'IBM Plex Sans', sans-serif; height: 100vh; overflow: hidden; }
 
-    /* Camera & Overlay (Fix for Gray Line) */
-    .cam-view { flex: 1; position: relative; background: #000; }
-    video { width: 100%; height: 100%; object-fit: cover; }
-    
-    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-    .viewfinder { 
-        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        width: 80%; max-width: 300px; height: 140px;
-        border: 3px dashed var(--gold); border-radius: 12px;
-        box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); /* Fixed: Overlay logic */
-    }
+        .screen { display: none; height: 100vh; width: 100%; position: absolute; top:0; left:0; }
+        .screen.active { display: flex; flex-direction: column; z-index: 10; }
 
-    /* UI Elements */
-    .ui-bottom { background: var(--bg-dark); color: #fff; padding: 20px; text-align: center; }
-    #shutterBtn { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid var(--gold); cursor: pointer; }
-    
-    /* Result Screen */
-    .reveal { background: var(--paper); padding: 30px; color: var(--ink); height: 100%; overflow-y: auto; }
-    .trail-item { padding: 10px 0; border-bottom: 1px solid #ccc; }
-</style>
+        /* Camera & Fix for Gray Line (No heavy shadow) */
+        .cam-view { flex: 1; position: relative; background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        .viewfinder { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 80%; max-width: 300px; height: 140px;
+            border: 3px dashed var(--gold); border-radius: 12px;
+            background: rgba(0,0,0,0.3);
+        }
+
+        .ui-bottom { background: var(--bg-dark); color: #fff; padding: 25px; text-align: center; }
+        #shutterBtn { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid var(--gold); cursor: pointer; }
+        #camStatus { color: var(--gold); font-size: 13px; margin-bottom: 10px; font-family: monospace; }
+
+        /* Results Screen */
+        .reveal { background: var(--paper); padding: 30px; color: var(--ink); height: 100vh; overflow-y: auto; }
+        .trail-item { padding: 15px 0; border-bottom: 1px dashed #ccc; }
+        .btn-scan { background: var(--ink); color: #fff; padding: 15px; width: 100%; border-radius: 10px; margin-top: 20px; }
+    </style>
 </head>
 <body>
 
-    <!-- SCREEN 1: SCANNER -->
+    <!-- SCANNER SCREEN -->
     <div class="screen active" id="scan">
         <div class="cam-view">
             <video id="webcam" autoplay playsinline muted></video>
             <div class="overlay"><div class="viewfinder"></div></div>
         </div>
         <div class="ui-bottom">
-            <div id="camStatus">Initializing...</div>
+            <div id="camStatus">Initializing engine...</div>
             <button id="shutterBtn"></button>
         </div>
     </div>
 
-    <!-- SCREEN 2: RESULT -->
+    <!-- REVEAL SCREEN -->
     <div class="screen" id="reveal">
         <div class="reveal">
-            <h2 id="serialDisplay">---</h2>
-            <div id="statusBadge">Checking...</div>
+            <h2 id="scannedSerial">Scanning...</h2>
             <div id="trailList"></div>
-            <button onclick="resetApp()">Scan Again</button>
+            <button class="btn-scan" onclick="resetApp()">Scan Another Note</button>
         </div>
     </div>
 
@@ -65,41 +66,61 @@
     const scanScreen = document.getElementById('scan');
     const revealScreen = document.getElementById('reveal');
 
-    // Load Camera
+    // 1. Core Engine: Camera Init
     async function init() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "environment" } 
+            });
             video.srcObject = stream;
-            camStatus.textContent = "Camera Ready.";
-        } catch (e) { camStatus.textContent = "Camera Access Denied."; }
+            camStatus.textContent = "Engine Ready. Aim at serial.";
+        } catch (e) { camStatus.textContent = "Camera Access Error."; }
     }
 
-    // Process & OCR
+    // 2. Core Engine: Image Processor & OCR
     shutterBtn.addEventListener('click', async () => {
         shutterBtn.disabled = true;
-        camStatus.textContent = "Scanning...";
+        camStatus.textContent = "Processing logic...";
 
-        // Native Crop (No OpenCV)
+        // Crop center viewfinder
         const canvas = document.createElement('canvas');
         canvas.width = 400; canvas.height = 200;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, video.videoWidth*0.2, video.videoHeight*0.4, video.videoWidth*0.6, video.videoHeight*0.2, 0,0, 400, 200);
         
-        const imgData = canvas.toDataURL('image/jpeg', 0.8);
+        // Enhance image for OCR
+        ctx.filter = 'contrast(150%) grayscale(100%)';
+        ctx.drawImage(canvas, 0, 0);
+        const imgData = canvas.toDataURL('image/jpeg', 0.9);
 
         try {
             const result = await Tesseract.recognize(imgData, 'eng');
-            showResult(result.data.text.replace(/[^A-Z0-9]/g, ''));
+            const raw = result.data.text.replace(/[^A-Z0-9]/g, '');
+            
+            // Regex for Serial: 3 Alphanumeric + 6 Digits
+            const match = raw.match(/([0-9][A-Z0-9]{2}[0-9]{6})/i);
+            
+            if (match) {
+                renderResult(match[1]);
+            } else {
+                camStatus.textContent = "No valid serial found. Try again.";
+                shutterBtn.disabled = false;
+            }
         } catch (e) { 
-            camStatus.textContent = "Scan Failed."; 
+            camStatus.textContent = "Engine Error."; 
             shutterBtn.disabled = false;
         }
     });
 
-    function showResult(serial) {
+    // 3. Core Engine: Result & Trail Rendering
+    function renderResult(serial) {
         scanScreen.classList.remove('active');
         revealScreen.classList.add('active');
-        document.getElementById('serialDisplay').textContent = serial || "Not Detected";
+        document.getElementById('scannedSerial').textContent = "Serial: " + serial;
+        
+        // Mock Trail Logic
+        const trail = document.getElementById('trailList');
+        trail.innerHTML = `<div class="trail-item">📍 New sighting: ${new Date().toLocaleTimeString()}</div>`;
     }
 
     function resetApp() {
