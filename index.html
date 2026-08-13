@@ -5,91 +5,199 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Money Hunter — Track the Note</title>
 
-<meta name="theme-color" content="#1a202c">
-<meta name="description" content="Money Hunter — scan a banknote's serial number and follow the journey it's been on.">
+<meta name="theme-color" content="#0d1117">
+<meta name="description" content="Money Hunter — Scan a banknote serial number and track its journey.">
 <link id="manifest-link" rel="manifest" href="/manifest.json">
 
-<!-- Fonts & Tesseract OCR Library -->
+<!-- Google Fonts & Tesseract OCR Engine -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.min.js@5/dist/tesseract.min.js"></script>
 
 <style>
   :root {
-    --paper:#fcf8f2;
-    --paper-dark:#f1e9db;
-    --ink:#1a202c;
-    --ink-soft:#4a5568;
-    --stamp:#c53030;
-    --gold:#b8923f;
-    --green:#2f7a4a;
+    --paper: #fcf8f2;
+    --paper-dark: #f1e9db;
+    --ink: #1a202c;
+    --ink-soft: #4a5568;
+    --stamp: #c53030;
+    --gold: #b8923f;
+    --green: #2f7a4a;
+    --bg-dark: #0d1117;
   }
-  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { height:100%; margin:0; background:#0d1117; font-family:'IBM Plex Sans',sans-serif; display:flex; align-items:center; justify-content:center; }
-  .wrap { display:flex; flex-direction:column; align-items:center; width:100%; }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
   
+  html, body { 
+    height: 100%; 
+    background: var(--bg-dark); 
+    font-family: 'IBM Plex Sans', sans-serif; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+  }
+
+  .wrap { display: flex; flex-direction: column; align-items: center; width: 100%; height: 100%; justify-content: center; }
+
   .device {
-    width:390px; max-width:100%; height:780px; background:var(--paper);
-    border-radius:36px; overflow:hidden; position:relative;
-    box-shadow:0 30px 80px rgba(0,0,0,.5); border:8px solid #111;
+    width: 100%;
+    max-width: 420px;
+    height: 100vh;
+    max-height: 850px;
+    background: var(--paper);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
   }
-  .screen { position:absolute; inset:0; display:none; flex-direction:column; }
-  .screen.active { display:flex; }
 
-  /* SCAN SCREEN */
-  .cam-top { padding:20px 20px 12px; display:flex; justify-content:space-between; align-items:center; color:var(--paper); z-index:2; position:relative; background: #0d1117; }
-  .brand { font-family:'Fraunces',serif; font-weight:600; font-size:15px; }
-  .brand em { font-style:normal; color:var(--gold); }
-  
-  .cam-view { flex:1; position:relative; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  video { position:absolute; width:100%; height:100%; object-fit:cover; }
-  
-  .viewfinder { width:280px; height:140px; position:relative; z-index:2; }
-  .corner { position:absolute; width:28px; height:28px; border:3px solid var(--gold); }
-  .corner.tl { top:0; left:0; border-right:none; border-bottom:none; border-radius:6px 0 0 0; }
-  .corner.tr { top:0; right:0; border-left:none; border-bottom:none; border-radius:0 6px 0 0; }
-  .corner.bl { bottom:0; left:0; border-right:none; border-top:none; border-radius:0 0 0 6px; }
-  .corner.br { bottom:0; right:0; border-left:none; border-top:none; border-radius:0 0 6px 0; }
-  
-  .scan-line { position:absolute; left:6%; right:6%; height:2px; background:var(--gold); box-shadow:0 0 12px 2px var(--gold); animation:sweep 2.2s ease-in-out infinite; }
-  @keyframes sweep { 0%,100%{ top:8%; opacity:.9;} 50%{ top:88%; opacity:.6;} }
-  
-  .cam-hint { text-align:center; color:#a8a196; font-size:12.5px; padding:12px 20px 4px; background:#0d1117; }
-  .cam-status { text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); padding:2px 20px 10px; background:#0d1117; min-height:34px; }
-  .cam-bottom { padding:15px 24px 25px; display:flex; align-items:center; justify-content:center; background:#0d1117; }
-  
-  .shutter { width:68px; height:68px; border-radius:50%; background:var(--paper); border:4px solid var(--gold); cursor:pointer; position:relative; }
-  .shutter::after { content:''; position:absolute; top:4px; left:4px; width:52px; height:52px; border-radius:50%; background:var(--stamp); }
-  .shutter:disabled { opacity:0.4; cursor:not-allowed; }
+  @media (min-width: 440px) {
+    .device {
+      height: 820px;
+      border-radius: 36px;
+      border: 8px solid #1a202c;
+    }
+  }
 
-  /* REVEAL & TRAIL SCREEN */
-  .reveal { padding:26px 24px; overflow-y:auto; height:100%; background:var(--paper); position:relative; }
-  .close-x { position:absolute; top:20px; right:20px; font-size:24px; border:none; background:none; cursor:pointer; color:var(--ink-soft); }
-  .status-badge { display:inline-block; padding:4px 10px; background:var(--green); color:#fff; border-radius:6px; font-size:11px; font-family:'IBM Plex Mono',monospace; letter-spacing:0.05em; font-weight:600; }
-  .serial-title { font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:700; color:var(--ink); margin-top:14px; }
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; background: var(--bg-dark); }
+  .screen.active { display: flex; z-index: 10; }
+
+  /* SCANNER UI */
+  .cam-top {
+    padding: 18px 20px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    background: var(--bg-dark);
+    z-index: 2;
+  }
+  .brand { font-family: 'Fraunces', serif; font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
+  .brand em { font-style: normal; color: var(--gold); }
+  .ocr-tag { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--gold); background: rgba(184, 146, 63, 0.15); padding: 3px 8px; border-radius: 4px; }
+
+  .cam-view {
+    flex: 1;
+    position: relative;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  video {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .viewfinder {
+    width: 280px;
+    height: 140px;
+    position: relative;
+    z-index: 5;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+    border-radius: 8px;
+  }
+
+  .corner { position: absolute; width: 24px; height: 24px; border: 3px solid var(--gold); }
+  .corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+  .corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+  .corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+  .corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+
+  .scan-line {
+    position: absolute;
+    left: 4%; right: 4%;
+    height: 2px;
+    background: var(--gold);
+    box-shadow: 0 0 12px 2px var(--gold);
+    animation: sweep 2s ease-in-out infinite;
+  }
+  @keyframes sweep { 0%, 100% { top: 10%; opacity: 0.9; } 50% { top: 90%; opacity: 0.5; } }
+
+  .cam-info-bar { background: var(--bg-dark); padding: 12px 20px 6px; text-align: center; }
+  .cam-hint { color: #a8a196; font-size: 13px; margin-bottom: 4px; }
+  .cam-status { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--gold); min-height: 20px; }
+
+  .cam-bottom { padding: 16px 24px 28px; display: flex; align-items: center; justify-content: center; background: var(--bg-dark); }
+  .shutter {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 4px solid var(--gold);
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.1s ease;
+  }
+  .shutter:active { transform: scale(0.95); }
+  .shutter::after {
+    content: ''; position: absolute; top: 5px; left: 5px; width: 54px; height: 54px;
+    border-radius: 50%; background: var(--stamp);
+  }
+  .shutter:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* REVEAL RESULT UI */
+  .reveal { padding: 28px 24px; overflow-y: auto; height: 100%; background: var(--paper); color: var(--ink); position: relative; }
+  .close-x { position: absolute; top: 20px; right: 20px; font-size: 26px; border: none; background: none; cursor: pointer; color: var(--ink-soft); line-height: 1; }
   
-  .stamp-zone { margin:20px 0 15px; display:flex; justify-content:center; }
-  .stamp { width:110px; height:110px; border-radius:50%; border:3px solid var(--stamp); color:var(--stamp); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Fraunces',serif; text-align:center; transform:rotate(-8deg); }
-  .stamp .st-1 { font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
-  .stamp .st-2 { font-size:15px; font-weight:600; margin:2px 0; }
+  .status-badge {
+    display: inline-block; padding: 5px 12px;
+    background: var(--green); color: #fff;
+    border-radius: 6px; font-size: 11px; font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.06em; font-weight: 600; text-transform: uppercase;
+  }
 
-  .headline { font-family:'Fraunces',serif; font-size:20px; font-weight:600; color:var(--ink); text-align:center; margin:10px 0 4px; }
-  .headline em { font-style:normal; color:var(--stamp); }
-  .subline { text-align:center; color:var(--ink-soft); font-size:13px; margin-bottom:20px; }
+  .serial-title { font-family: 'IBM Plex Mono', monospace; font-size: 24px; font-weight: 700; color: var(--ink); margin-top: 12px; letter-spacing: 0.05em; }
 
-  .divider { border:none; border-top:1px dashed rgba(26,32,44,.25); margin:18px 0; }
-  .trail-title { font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:12px; }
-  .trail { position:relative; padding-left:6px; }
-  .trail-item { display:flex; gap:14px; position:relative; padding-bottom:18px; }
-  .trail-item:last-child { padding-bottom:0; }
-  .trail-item::before { content:''; position:absolute; left:9px; top:20px; bottom:0; width:1px; border-left:2px dotted rgba(197,48,48,.4); }
-  .trail-item:last-child::before { display:none; }
-  .dot { width:20px; height:20px; border-radius:50%; background:var(--paper); border:2px solid var(--stamp); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--stamp); font-weight:700; }
-  .dot.now { background:var(--stamp); color:var(--paper); }
-  .trail-city { font-family:'Fraunces',serif; font-size:15px; font-weight:600; color:var(--ink); }
-  .trail-meta { font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
+  .stamp-zone { margin: 24px 0 16px; display: flex; justify-content: center; }
+  .stamp {
+    width: 115px; height: 115px; border-radius: 50%;
+    border: 3px solid var(--stamp); color: var(--stamp);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Fraunces', serif; text-align: center; transform: rotate(-7deg);
+    padding: 8px;
+  }
+  .stamp .st-1 { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .stamp .st-2 { font-size: 16px; font-weight: 700; margin-top: 2px; }
 
-  .btn-scan { margin-top:25px; width:100%; padding:14px; background:var(--ink); color:#fff; border:none; border-radius:10px; font-weight:600; cursor:pointer; font-size:14px; }
+  .headline { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 600; color: var(--ink); text-align: center; margin: 10px 0 6px; }
+  .headline em { font-style: normal; color: var(--stamp); }
+  .subline { text-align: center; color: var(--ink-soft); font-size: 13.5px; margin-bottom: 22px; line-height: 1.4; }
+
+  .divider { border: none; border-top: 1px dashed rgba(26, 32, 44, 0.25); margin: 20px 0; }
+  
+  .trail-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 16px; }
+  .trail { position: relative; padding-left: 6px; }
+  .trail-item { display: flex; gap: 14px; position: relative; padding-bottom: 20px; }
+  .trail-item:last-child { padding-bottom: 0; }
+  .trail-item::before {
+    content: ''; position: absolute; left: 9px; top: 22px; bottom: 0;
+    width: 1px; border-left: 2px dotted rgba(197, 48, 48, 0.4);
+  }
+  .trail-item:last-child::before { display: none; }
+  
+  .dot {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--paper); border: 2px solid var(--stamp);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--stamp); font-weight: 700; font-family: 'IBM Plex Mono', monospace;
+  }
+  .dot.now { background: var(--stamp); color: var(--paper); }
+  
+  .trail-city { font-family: 'Fraunces', serif; font-size: 15.5px; font-weight: 600; color: var(--ink); }
+  .trail-meta { font-size: 11.5px; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
+
+  .btn-scan {
+    margin-top: 28px; width: 100%; padding: 15px;
+    background: var(--ink); color: #fff; border: none;
+    border-radius: 12px; font-weight: 600; cursor: pointer;
+    font-size: 14.5px; transition: background 0.2s;
+  }
+  .btn-scan:active { background: #000; }
 </style>
 </head>
 <body>
@@ -97,12 +205,13 @@
 <div class="wrap">
   <div class="device">
 
-    <!-- CAMERA SCANNER SCREEN -->
+    <!-- SCREEN 1: CAMERA SCANNER -->
     <div class="screen active" id="scan">
       <div class="cam-top">
         <div class="brand">Money <em>Hunter</em></div>
-        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px;">LIVE OCR</div>
+        <div class="ocr-tag">LIVE OCR</div>
       </div>
+
       <div class="cam-view">
         <video id="webcam" autoplay playsinline muted></video>
         <div class="viewfinder">
@@ -113,14 +222,18 @@
           <div class="scan-line"></div>
         </div>
       </div>
-      <div class="cam-hint" id="camHint">Align note's serial number inside the frame</div>
-      <div class="cam-status" id="camStatus">Initializing camera & GPS...</div>
+
+      <div class="cam-info-bar">
+        <div class="cam-hint" id="camHint">Align banknote serial inside frame</div>
+        <div class="cam-status" id="camStatus">Initializing camera & GPS...</div>
+      </div>
+
       <div class="cam-bottom">
-        <button class="shutter" id="shutterBtn" aria-label="Scan Note"></button>
+        <button class="shutter" id="shutterBtn" aria-label="Scan Serial Number"></button>
       </div>
     </div>
 
-    <!-- REVEAL NOTE STATUS & TRAIL SCREEN -->
+    <!-- SCREEN 2: REVEAL STATUS & TRAIL -->
     <div class="screen" id="reveal">
       <div class="reveal">
         <button class="close-x" id="closeBtn">&times;</button>
@@ -135,7 +248,7 @@
         </div>
 
         <div class="headline" id="revealHeadline">Checking <em>Status...</em></div>
-        <div class="subline" id="revealSubline">Fetching note journey trail...</div>
+        <div class="subline" id="revealSubline">Fetching note history from database...</div>
 
         <hr class="divider">
         <div class="trail-title">Note Journey Trail</div>
@@ -159,7 +272,7 @@
 
   let currentLocationLabel = "India";
 
-  // Get Real GPS Location
+  // 1. Get Live GPS Location
   function detectRealLocation() {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(async (pos) => {
@@ -171,36 +284,65 @@
           const city = data.city || data.locality || data.localityInfo?.administrative[2]?.name || "Local Area";
           const state = data.principalSubdivision || "";
           currentLocationLabel = `${city}${state ? ', ' + state : ''}`;
+          camStatus.textContent = `GPS Ready: ${currentLocationLabel}`;
         } catch (e) {
           currentLocationLabel = "India";
         }
       }, () => {
-        currentLocationLabel = "Location Permission Denied";
-      });
+        currentLocationLabel = "India";
+      }, { timeout: 8000 });
     }
   }
 
-  // Camera Setup
+  // 2. Camera Setup with Black-Screen Fix
   async function startCamera() {
+    camStatus.textContent = "Connecting camera feed...";
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
+      const constraints = {
+        video: { 
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
         audio: false
-      });
+      };
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       video.srcObject = stream;
-      camStatus.textContent = "Camera Ready. Align serial & tap shutter.";
+      
+      // Force play after stream metadata loads (Fixes blank camera on mobile)
+      video.onloadedmetadata = () => {
+        video.play().then(() => {
+          camStatus.textContent = "Camera Ready. Align serial & tap shutter.";
+        }).catch(err => {
+          camStatus.textContent = "Tap shutter to start stream.";
+        });
+      };
+
     } catch (err) {
-      camStatus.textContent = "Error: Camera access denied.";
+      console.warn("Primary camera error, trying fallback:", err);
+      try {
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        video.srcObject = fallbackStream;
+        video.onloadedmetadata = () => { video.play(); };
+        camStatus.textContent = "Camera Ready (Basic stream).";
+      } catch (e) {
+        camStatus.textContent = "Error: Camera access denied.";
+      }
     }
   }
 
-  // Shutter Handler
+  // 3. Shutter Click & OCR Logic
   shutterBtn.addEventListener('click', async () => {
-    if (!video.srcObject) return;
+    if (!video.srcObject) {
+      await startCamera();
+      return;
+    }
 
     shutterBtn.disabled = true;
-    camStatus.textContent = "Scanning frame for valid RBI serial...";
+    camStatus.textContent = "Reading serial number from frame...";
 
+    // Capture Frame to dynamic canvas
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
@@ -215,22 +357,22 @@
         extractedSerial = result.formatted;
       }
     } catch (e) {
-      console.warn("OCR Read Warning:", e);
+      console.warn("OCR Error:", e);
     }
 
-    // STRICT CHECK: No fake prompt auto-fill!
+    // STRICT VALIDATION: Reject scan if no valid note serial found
     if (!extractedSerial) {
-      camStatus.textContent = "❌ No valid serial number found! Align note properly.";
+      camStatus.textContent = "❌ No serial found! Align note inside box.";
       shutterBtn.disabled = false;
-      return; 
+      return;
     }
 
-    camStatus.textContent = `Found: ${extractedSerial}. Sending scan...`;
+    camStatus.textContent = `Identified: ${extractedSerial}. Saving scan...`;
     await sendScanToServer(extractedSerial);
     shutterBtn.disabled = false;
   });
 
-  // Server Communication
+  // 4. API Request to Vercel/Supabase Backend
   async function sendScanToServer(serial) {
     try {
       const res = await fetch('/v1/scans', {
@@ -251,17 +393,17 @@
       }
       renderStatusScreen(data);
     } catch (e) {
-      alert("Network Error while posting scan.");
+      alert("Network Error: Could not connect to backend.");
     }
   }
 
-  // UI Renderer
+  // 5. Result Screen Renderer
   function renderStatusScreen(data) {
     scanScreen.classList.remove('active');
     revealScreen.classList.add('active');
 
     document.getElementById('scannedSerial').textContent = data.serial_number;
-    
+
     const trail = data.trail || [];
     const totalScans = trail.length || 1;
     const isFirst = data.status === 'first' || totalScans <= 1;
@@ -278,7 +420,7 @@
       stampText.style.color = "#2f7a4a";
       stampText.innerHTML = `<div class="st-1">FIRST</div><div class="st-2">SIGHTING</div>`;
       headline.innerHTML = "You found it <em>first!</em>";
-      subline.textContent = "This is the earliest recorded scan of this note.";
+      subline.textContent = "This is the earliest recorded scan of this note in the database.";
     } else {
       badge.textContent = `REPEAT SCAN (#${totalScans})`;
       badge.style.background = "#b8923f";
@@ -289,13 +431,13 @@
       subline.textContent = `Scanned ${totalScans - 1} time(s) before yours across India!`;
     }
 
-    // Trail Renderer
+    // Render Journey Trail List
     const trailContainer = document.getElementById('trailList');
     trailContainer.innerHTML = '';
 
     trail.forEach((item, idx) => {
       const isCurrent = idx === trail.length - 1;
-      const dateObj = new Date(item.scanned_at);
+      const dateObj = new Date(item.scanned_at || Date.now());
       const formattedDate = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
       const formattedTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
@@ -321,6 +463,7 @@
   document.getElementById('closeBtn').addEventListener('click', resetScanner);
   document.getElementById('scanAgainBtn').addEventListener('click', resetScanner);
 
+  // App Initialization
   startCamera();
   detectRealLocation();
 </script>
