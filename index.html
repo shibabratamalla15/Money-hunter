@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Money Hunter | Fast Capture</title>
+    <title>Money Hunter | Supabase Direct</title>
+    
+    <!-- 1. Supabase JS Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
         body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; overflow: hidden; }
         #webcam { width: 100%; height: 100%; object-fit: cover; }
         .ui { position: absolute; bottom: 30px; width: 100%; text-align: center; }
-        #captureBtn { padding: 20px 40px; background: #b8923f; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; }
-        .overlay { position: absolute; inset: 0; pointer-events: none; border: 3px dashed #b8923f; margin: 20%; }
+        #captureBtn { padding: 18px 36px; background: #b8923f; color: #000; border: none; border-radius: 50px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        #captureBtn:disabled { opacity: 0.5; }
+        .overlay { position: absolute; inset: 0; pointer-events: none; border: 3px dashed #b8923f; margin: 25% 10%; border-radius: 12px; }
+        #msg { font-size: 14px; margin-bottom: 12px; font-family: monospace; color: #b8923f; }
     </style>
 </head>
 <body>
@@ -17,56 +23,75 @@
     <video id="webcam" autoplay playsinline muted></video>
     <div class="overlay"></div>
     <div class="ui">
-        <div id="msg">Ready to capture...</div>
-        <button id="captureBtn">SNAP & SEND</button>
+        <div id="msg">Ready to scan...</div>
+        <button id="captureBtn">SNAP & SAVE TO SUPABASE</button>
     </div>
 
 <script>
+    // 2. Apni Supabase Credentials Yahan Daalein
+    const SUPABASE_URL = "https://cxouquidwolawekliwyv.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4b3VxdWlkd29sYXdla2xpd3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MDQ2MjUsImV4cCI6MjEwMjE4MDYyNX0.irlELy8ig3Gn0d5PaYbJPi1js-nXcfrG-OrDJctw7aA";
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const video = document.getElementById('webcam');
     const msg = document.getElementById('msg');
     const btn = document.getElementById('captureBtn');
 
-    // 1. Camera Init
+    // Camera Init
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
         .then(stream => video.srcObject = stream)
-        .catch(e => msg.textContent = "Camera Error!");
+        .catch(e => msg.textContent = "Camera Permission Denied!");
 
-    // 2. Capture and Send Logic
+    // Capture & Save directly to Supabase
     btn.addEventListener('click', async () => {
         btn.disabled = true;
-        msg.textContent = "Capturing...";
+        msg.textContent = "Creating Virtual Copy...";
 
-        // Snapshot
+        // 1. Create Lightweight Snapshot (640x360)
         const canvas = document.createElement('canvas');
-        canvas.width = 640; canvas.height = 360; // Lightweight resolution
-        canvas.getContext('2d').drawImage(video, 0, 0, 640, 360);
-        const imageData = canvas.toDataURL('image/jpeg', 0.6); // 60% quality
+        canvas.width = 640; canvas.height = 360;
+        const ctx = canvas.getContext('2d');
+        
+        // Simple contrast boost for clean image
+        ctx.filter = 'contrast(120%) brightness(105%)';
+        ctx.drawImage(video, 0, 0, 640, 360);
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.6);
 
-        // Get Location
+        // 2. Get Live GPS Location
+        msg.textContent = "Getting Location...";
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            const data = {
-                image: imageData,
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                time: new Date().toISOString()
-            };
+            
+            msg.textContent = "Saving to Supabase Database...";
 
-            // Send to Server
-            msg.textContent = "Sending to Server...";
+            // 3. Direct Insert into Supabase Table
             try {
-                const response = await fetch('https://YOUR_SERVER_ENDPOINT/upload', {
-                    method: 'POST',
-                    body: JSON.stringify(data),
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                msg.textContent = "Sent Successfully!";
-                setTimeout(() => btn.disabled = false, 2000);
-            } catch(e) {
-                msg.textContent = "Upload Failed: " + e.message;
+                const { data, error } = await supabaseClient
+                    .from('scans')
+                    .insert([
+                        {
+                            image_data: imageBase64,
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude,
+                            scanned_at: new Date().toISOString()
+                        }
+                    ]);
+
+                if (error) throw error;
+
+                msg.textContent = "✅ Saved Successfully to Supabase!";
+                setTimeout(() => {
+                    msg.textContent = "Ready to scan next note...";
+                    btn.disabled = false;
+                }, 2500);
+
+            } catch (err) {
+                msg.textContent = "❌ Supabase Error: " + err.message;
                 btn.disabled = false;
             }
-        }, (e) => {
-            msg.textContent = "Location required!";
+
+        }, (err) => {
+            msg.textContent = "Location Error: Please turn on GPS";
             btn.disabled = false;
         });
     });
