@@ -12,7 +12,7 @@
 <!-- Fonts & Tesseract OCR Library -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.min.js@5/dist/tesseract.min.js"></script>
 
 <style>
   :root {
@@ -22,7 +22,7 @@
     --ink-soft:#4a5568;
     --stamp:#c53030;
     --gold:#b8923f;
-    --note-purple:#6e5a7d;
+    --green:#2f7a4a;
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { height:100%; margin:0; background:#0d1117; font-family:'IBM Plex Sans',sans-serif; display:flex; align-items:center; justify-content:center; }
@@ -44,7 +44,7 @@
   .cam-view { flex:1; position:relative; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden; }
   video { position:absolute; width:100%; height:100%; object-fit:cover; }
   
-  .viewfinder { width:280px; height:150px; position:relative; z-index:2; }
+  .viewfinder { width:280px; height:140px; position:relative; z-index:2; }
   .corner { position:absolute; width:28px; height:28px; border:3px solid var(--gold); }
   .corner.tl { top:0; left:0; border-right:none; border-bottom:none; border-radius:6px 0 0 0; }
   .corner.tr { top:0; right:0; border-left:none; border-bottom:none; border-radius:0 6px 0 0; }
@@ -55,23 +55,23 @@
   @keyframes sweep { 0%,100%{ top:8%; opacity:.9;} 50%{ top:88%; opacity:.6;} }
   
   .cam-hint { text-align:center; color:#a8a196; font-size:12.5px; padding:12px 20px 4px; background:#0d1117; }
-  .cam-status { text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); padding:2px 20px 10px; background:#0d1117; min-height:28px; }
+  .cam-status { text-align:center; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); padding:2px 20px 10px; background:#0d1117; min-height:34px; }
   .cam-bottom { padding:15px 24px 25px; display:flex; align-items:center; justify-content:center; background:#0d1117; }
   
   .shutter { width:68px; height:68px; border-radius:50%; background:var(--paper); border:4px solid var(--gold); cursor:pointer; position:relative; }
   .shutter::after { content:''; position:absolute; top:4px; left:4px; width:52px; height:52px; border-radius:50%; background:var(--stamp); }
-  .shutter:disabled { opacity:0.5; cursor:not-allowed; }
+  .shutter:disabled { opacity:0.4; cursor:not-allowed; }
 
   /* REVEAL & TRAIL SCREEN */
   .reveal { padding:26px 24px; overflow-y:auto; height:100%; background:var(--paper); position:relative; }
   .close-x { position:absolute; top:20px; right:20px; font-size:24px; border:none; background:none; cursor:pointer; color:var(--ink-soft); }
-  .status-badge { display:inline-block; padding:4px 10px; background:var(--gold); color:#fff; border-radius:6px; font-size:11px; font-family:'IBM Plex Mono',monospace; letter-spacing:0.05em; }
+  .status-badge { display:inline-block; padding:4px 10px; background:var(--green); color:#fff; border-radius:6px; font-size:11px; font-family:'IBM Plex Mono',monospace; letter-spacing:0.05em; font-weight:600; }
   .serial-title { font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:700; color:var(--ink); margin-top:14px; }
   
   .stamp-zone { margin:20px 0 15px; display:flex; justify-content:center; }
   .stamp { width:110px; height:110px; border-radius:50%; border:3px solid var(--stamp); color:var(--stamp); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:'Fraunces',serif; text-align:center; transform:rotate(-8deg); }
   .stamp .st-1 { font-size:10px; letter-spacing:.12em; text-transform:uppercase; }
-  .stamp .st-2 { font-size:16px; font-weight:600; margin:2px 0; }
+  .stamp .st-2 { font-size:15px; font-weight:600; margin:2px 0; }
 
   .headline { font-family:'Fraunces',serif; font-size:20px; font-weight:600; color:var(--ink); text-align:center; margin:10px 0 4px; }
   .headline em { font-style:normal; color:var(--stamp); }
@@ -113,10 +113,10 @@
           <div class="scan-line"></div>
         </div>
       </div>
-      <div class="cam-hint" id="camHint">Align serial number strip inside box</div>
-      <div class="cam-status" id="camStatus">Initializing camera...</div>
+      <div class="cam-hint" id="camHint">Align note's serial number inside the frame</div>
+      <div class="cam-status" id="camStatus">Initializing camera & GPS...</div>
       <div class="cam-bottom">
-        <button class="shutter" id="shutterBtn" aria-label="Scan Frame"></button>
+        <button class="shutter" id="shutterBtn" aria-label="Scan Note"></button>
       </div>
     </div>
 
@@ -124,7 +124,7 @@
     <div class="screen" id="reveal">
       <div class="reveal">
         <button class="close-x" id="closeBtn">&times;</button>
-        <div class="status-badge" id="scanStatusBadge">SCANNING COMPLETE</div>
+        <div class="status-badge" id="scanStatusBadge">FIRST SIGHTING</div>
         <div class="serial-title" id="scannedSerial">--- ---</div>
 
         <div class="stamp-zone">
@@ -135,13 +135,11 @@
         </div>
 
         <div class="headline" id="revealHeadline">Checking <em>Status...</em></div>
-        <div class="subline" id="revealSubline">Fetching note journey trail from server...</div>
+        <div class="subline" id="revealSubline">Fetching note journey trail...</div>
 
         <hr class="divider">
         <div class="trail-title">Note Journey Trail</div>
-        <div class="trail" id="trailList">
-          <!-- Real-time trail entries will be appended here -->
-        </div>
+        <div class="trail" id="trailList"></div>
 
         <button class="btn-scan" id="scanAgainBtn">Scan Another Note</button>
       </div>
@@ -159,7 +157,30 @@
   const scanScreen = document.getElementById('scan');
   const revealScreen = document.getElementById('reveal');
 
-  // Initialize Camera Feed
+  let currentLocationLabel = "India";
+
+  // Get Real GPS Location
+  function detectRealLocation() {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        try {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`);
+          const data = await res.json();
+          const city = data.city || data.locality || data.localityInfo?.administrative[2]?.name || "Local Area";
+          const state = data.principalSubdivision || "";
+          currentLocationLabel = `${city}${state ? ', ' + state : ''}`;
+        } catch (e) {
+          currentLocationLabel = "India";
+        }
+      }, () => {
+        currentLocationLabel = "Location Permission Denied";
+      });
+    }
+  }
+
+  // Camera Setup
   async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -167,24 +188,19 @@
         audio: false
       });
       video.srcObject = stream;
-      camStatus.textContent = "Camera Ready. Tap button to scan.";
+      camStatus.textContent = "Camera Ready. Align serial & tap shutter.";
     } catch (err) {
-      console.error("Camera error:", err);
-      camStatus.textContent = "Error: Camera access blocked or unavailable.";
+      camStatus.textContent = "Error: Camera access denied.";
     }
   }
 
-  // Handle Real Frame Capture + OCR Processing
+  // Shutter Handler
   shutterBtn.addEventListener('click', async () => {
-    if (!video.srcObject) {
-      alert("Camera feed not ready yet.");
-      return;
-    }
+    if (!video.srcObject) return;
 
     shutterBtn.disabled = true;
-    camStatus.textContent = "Reading serial with AI OCR...";
+    camStatus.textContent = "Scanning frame for valid RBI serial...";
 
-    // Capture current frame from video
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
@@ -194,31 +210,27 @@
     let extractedSerial = null;
 
     try {
-      // Run Tesseract OCR engine on current frame
       const result = await processFrame(canvas);
-      if (result && result.formatted) {
+      if (result && result.formatted && isValidSerialFormat(result.formatted)) {
         extractedSerial = result.formatted;
       }
     } catch (e) {
-      console.warn("OCR automatic frame read skipped:", e);
+      console.warn("OCR Read Warning:", e);
     }
 
-    // Fallback if lighting/angle makes OCR unreadable
+    // STRICT CHECK: No fake prompt auto-fill!
     if (!extractedSerial) {
-      camStatus.textContent = "OCR needs clearer view. Manual entry fallback:";
-      extractedSerial = prompt("Photo clear nahi aayi. Serial number check karke yahan type karein (e.g. 4AN 782914):", "4AN 782914");
+      camStatus.textContent = "❌ No valid serial number found! Align note properly.";
+      shutterBtn.disabled = false;
+      return; 
     }
 
-    if (extractedSerial && isValidSerialFormat(extractedSerial)) {
-      camStatus.textContent = "Valid serial identified! Sending to Database...";
-      await sendScanToServer(extractedSerial);
-    } else {
-      camStatus.textContent = "Invalid format! RBI format digits required.";
-    }
+    camStatus.textContent = `Found: ${extractedSerial}. Sending scan...`;
+    await sendScanToServer(extractedSerial);
     shutterBtn.disabled = false;
   });
 
-  // Send Scan to Supabase Server & Render Live Status / History
+  // Server Communication
   async function sendScanToServer(serial) {
     try {
       const res = await fetch('/v1/scans', {
@@ -227,33 +239,33 @@
         body: JSON.stringify({
           serial_number: serial,
           geohash6: "tsj2k9",
-          city_label: "Udaipur, Rajasthan",
+          city_label: currentLocationLabel,
           scan_source: "citizen"
         })
       });
 
       const data = await res.json();
-
       if (data.error) {
         alert("Server Error: " + data.error);
         return;
       }
-
       renderStatusScreen(data);
     } catch (e) {
-      console.error("API Error:", e);
-      alert("Connection Error. Please check backend deployment.");
+      alert("Network Error while posting scan.");
     }
   }
 
-  // Dynamic UI Renderer for Note History & Status
+  // UI Renderer
   function renderStatusScreen(data) {
     scanScreen.classList.remove('active');
     revealScreen.classList.add('active');
 
     document.getElementById('scannedSerial').textContent = data.serial_number;
     
-    const isFirst = data.status === 'first';
+    const trail = data.trail || [];
+    const totalScans = trail.length || 1;
+    const isFirst = data.status === 'first' || totalScans <= 1;
+
     const badge = document.getElementById('scanStatusBadge');
     const headline = document.getElementById('revealHeadline');
     const subline = document.getElementById('revealSubline');
@@ -262,55 +274,57 @@
     if (isFirst) {
       badge.textContent = "FIRST SIGHTING";
       badge.style.background = "#2f7a4a";
+      stampText.style.borderColor = "#2f7a4a";
+      stampText.style.color = "#2f7a4a";
       stampText.innerHTML = `<div class="st-1">FIRST</div><div class="st-2">SIGHTING</div>`;
-      headline.innerHTML = "You found it <em>first.</em>";
-      subline.textContent = "This is the earliest known scan of this note. Its journey starts with you!";
+      headline.innerHTML = "You found it <em>first!</em>";
+      subline.textContent = "This is the earliest recorded scan of this note.";
     } else {
-      const totalScans = data.trail ? data.trail.length : 1;
       badge.textContent = `REPEAT SCAN (#${totalScans})`;
       badge.style.background = "#b8923f";
+      stampText.style.borderColor = "#c53030";
+      stampText.style.color = "#c53030";
       stampText.innerHTML = `<div class="st-1">SCAN</div><div class="st-2">NO. ${totalScans}</div>`;
       headline.innerHTML = "This note has <em>history.</em>";
       subline.textContent = `Scanned ${totalScans - 1} time(s) before yours across India!`;
     }
 
-    // Render Trail List
+    // Trail Renderer
     const trailContainer = document.getElementById('trailList');
     trailContainer.innerHTML = '';
 
-    if (data.trail && data.trail.length > 0) {
-      data.trail.forEach((item, idx) => {
-        const isCurrent = idx === data.trail.length - 1;
-        const dateObj = new Date(item.scanned_at);
-        const formattedDate = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-        const formattedTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    trail.forEach((item, idx) => {
+      const isCurrent = idx === trail.length - 1;
+      const dateObj = new Date(item.scanned_at);
+      const formattedDate = dateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      const formattedTime = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'trail-item';
-        itemDiv.innerHTML = `
-          <div class="dot ${isCurrent ? 'now' : ''}">${isCurrent ? '•' : idx + 1}</div>
-          <div>
-            <div class="trail-city">${item.city_label || 'Udaipur, Rajasthan'}</div>
-            <div class="trail-meta">${formattedDate} at ${formattedTime}</div>
-          </div>
-        `;
-        trailContainer.appendChild(itemDiv);
-      });
-    }
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'trail-item';
+      itemDiv.innerHTML = `
+        <div class="dot ${isCurrent ? 'now' : ''}">${isCurrent ? '•' : idx + 1}</div>
+        <div>
+          <div class="trail-city">${item.city_label || 'India'}</div>
+          <div class="trail-meta">${formattedDate} at ${formattedTime}</div>
+        </div>
+      `;
+      trailContainer.appendChild(itemDiv);
+    });
   }
 
   function resetScanner() {
     revealScreen.classList.remove('active');
     scanScreen.classList.add('active');
-    camStatus.textContent = "Camera Ready. Tap button to scan.";
+    camStatus.textContent = "Camera Ready. Align serial & tap shutter.";
   }
 
   document.getElementById('closeBtn').addEventListener('click', resetScanner);
   document.getElementById('scanAgainBtn').addEventListener('click', resetScanner);
 
   startCamera();
+  detectRealLocation();
 </script>
 
 </body>
-      </html>
+  </html>
   
