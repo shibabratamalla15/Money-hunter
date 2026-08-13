@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "server.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "manifest.json", "use": "@vercel/static" },
+    { "src": "sw.js", "use": "@vercel/static" },
+    { "src": "ocr-engine.js", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/v1/(.*)", "dest": "server.js" },
+    { "src": "/healthz", "dest": "server.js" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}
