@@ -3,51 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Money Hunter | Automatic Core</title>
+    <title>Money Hunter | Stable Core</title>
+    <!-- Tesseract CDN -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         :root { --gold: #b8923f; --bg-dark: #0d1117; --paper: #fcf8f2; }
         body { margin: 0; background: var(--bg-dark); font-family: sans-serif; overflow: hidden; height: 100vh; }
-        
         .screen { display: none; height: 100vh; width: 100%; position: absolute; top:0; left:0; }
         .screen.active { display: flex; flex-direction: column; z-index: 10; }
-
-        /* Camera UI */
         .cam-view { flex: 1; position: relative; }
         video { width: 100%; height: 100%; object-fit: cover; }
         .overlay { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; }
         .viewfinder { width: 250px; height: 100px; border: 2px dashed var(--gold); border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); }
-
-        /* Buttons */
         .ui { padding: 20px; background: var(--bg-dark); color: white; text-align: center; }
         #scanBtn { padding: 15px 40px; background: var(--gold); border: none; border-radius: 50px; font-weight: bold; cursor: pointer; }
-        
-        /* Result Screen */
-        .reveal { background: var(--paper); color: #000; padding: 40px; display: flex; flex-direction: column; align-items: center; }
-        #serialBig { font-size: 32px; font-family: monospace; font-weight: bold; margin: 20px 0; }
+        #status { color: var(--gold); font-size: 12px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <!-- SCANNER -->
     <div class="screen active" id="scan">
         <div class="cam-view">
             <video id="webcam" autoplay playsinline muted></video>
             <div class="overlay"><div class="viewfinder"></div></div>
         </div>
         <div class="ui">
-            <div id="status" style="margin-bottom:10px; font-size: 12px; color: var(--gold);">Initializing...</div>
+            <div id="status">Ready...</div>
             <button id="scanBtn">START SCAN</button>
-        </div>
-    </div>
-
-    <!-- REVEAL -->
-    <div class="screen" id="reveal">
-        <div class="reveal">
-            <h3>Verified Serial</h3>
-            <div id="serialBig">---</div>
-            <div id="trail"></div>
-            <button onclick="reset()" style="margin-top:20px;">Scan Another</button>
         </div>
     </div>
 
@@ -55,67 +37,48 @@
     const video = document.getElementById('webcam');
     const status = document.getElementById('status');
     const scanBtn = document.getElementById('scanBtn');
-    
-    // 1. Camera Init
+
     async function init() {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = stream;
-        status.textContent = "Engine Ready.";
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+            status.textContent = "Engine Ready.";
+        } catch (e) { status.textContent = "Cam Error: " + e.message; }
     }
 
-    // 2. Optimized OCR Engine
     scanBtn.addEventListener('click', async () => {
         scanBtn.disabled = true;
-        status.textContent = "Scanning...";
+        status.textContent = "Scanning (Please wait)...";
 
         const canvas = document.createElement('canvas');
-        canvas.width = 600; canvas.height = 200;
+        canvas.width = 400; canvas.height = 150;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, video.videoWidth*0.25, video.videoHeight*0.4, video.videoWidth*0.5, video.videoHeight*0.2, 0,0, 600, 200);
+        
+        // Adjust these coords if serial is missed:
+        ctx.drawImage(video, video.videoWidth*0.2, video.videoHeight*0.45, video.videoWidth*0.6, video.videoHeight*0.15, 0,0, 400, 150);
 
         try {
-            // Tesseract Worker Setup (Optimized for Alphanumeric)
-            const worker = await Tesseract.createWorker('eng');
-            await worker.setParameters({
-                tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
-            });
-
-            const { data: { text } } = await worker.recognize(canvas);
-            await worker.terminate();
-
-            // Auto-Clean Logic (No Manual Input)
-            let raw = text.replace(/[^A-Z0-9]/g, '');
+            // Using direct recognize() - Much more stable on mobile
+            const result = await Tesseract.recognize(canvas, 'eng');
+            
+            let raw = result.data.text.toUpperCase().replace(/[^A-Z0-9]/g, '');
             raw = raw.replace(/O/g, '0').replace(/I/g, '1').replace(/Z/g, '2');
 
-            // Strict Validation Regex (Indian Note Format)
-            const match = raw.match(/([0-9][A-Z]{2}[0-9]{6})/);
+            // Find pattern like: 123ABC456 or ABC123456
+            const match = raw.match(/([0-9][A-Z0-9]{2}[0-9]{6})/);
 
             if (match) {
-                showResult(match[1]);
+                alert("Serial Detected: " + match[1]);
+                status.textContent = "Found: " + match[1];
             } else {
-                status.textContent = "Re-aligning... Try again.";
-                scanBtn.disabled = false;
+                status.textContent = "Could not read. Try clear light.";
             }
         } catch (e) {
-            status.textContent = "Engine Error.";
+            status.textContent = "Error: " + e.message;
+        } finally {
             scanBtn.disabled = false;
         }
     });
-
-    function showResult(s) {
-        document.getElementById('scan').classList.remove('active');
-        document.getElementById('reveal').classList.add('active');
-        document.getElementById('serialBig').textContent = s.substring(0,3) + " " + s.substring(3);
-        document.getElementById('trail').innerHTML = `<p>Verified at ${new Date().toLocaleTimeString()}</p>`;
-    }
-
-    function reset() {
-        document.getElementById('reveal').classList.remove('active');
-        document.getElementById('scan').classList.add('active');
-        scanBtn.disabled = false;
-        status.textContent = "Engine Ready.";
-    }
 
     window.addEventListener('DOMContentLoaded', init);
 </script>
