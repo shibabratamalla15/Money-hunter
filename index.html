@@ -3,84 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Money Hunter | Stable Core</title>
-    <!-- Tesseract CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <title>Money Hunter | Fast Capture</title>
     <style>
-        :root { --gold: #b8923f; --bg-dark: #0d1117; --paper: #fcf8f2; }
-        body { margin: 0; background: var(--bg-dark); font-family: sans-serif; overflow: hidden; height: 100vh; }
-        .screen { display: none; height: 100vh; width: 100%; position: absolute; top:0; left:0; }
-        .screen.active { display: flex; flex-direction: column; z-index: 10; }
-        .cam-view { flex: 1; position: relative; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        .overlay { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; pointer-events: none; }
-        .viewfinder { width: 250px; height: 100px; border: 2px dashed var(--gold); border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); }
-        .ui { padding: 20px; background: var(--bg-dark); color: white; text-align: center; }
-        #scanBtn { padding: 15px 40px; background: var(--gold); border: none; border-radius: 50px; font-weight: bold; cursor: pointer; }
-        #status { color: var(--gold); font-size: 12px; margin-bottom: 10px; }
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; overflow: hidden; }
+        #webcam { width: 100%; height: 100%; object-fit: cover; }
+        .ui { position: absolute; bottom: 30px; width: 100%; text-align: center; }
+        #captureBtn { padding: 20px 40px; background: #b8923f; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        .overlay { position: absolute; inset: 0; pointer-events: none; border: 3px dashed #b8923f; margin: 20%; }
     </style>
 </head>
 <body>
 
-    <div class="screen active" id="scan">
-        <div class="cam-view">
-            <video id="webcam" autoplay playsinline muted></video>
-            <div class="overlay"><div class="viewfinder"></div></div>
-        </div>
-        <div class="ui">
-            <div id="status">Ready...</div>
-            <button id="scanBtn">START SCAN</button>
-        </div>
+    <video id="webcam" autoplay playsinline muted></video>
+    <div class="overlay"></div>
+    <div class="ui">
+        <div id="msg">Ready to capture...</div>
+        <button id="captureBtn">SNAP & SEND</button>
     </div>
 
 <script>
     const video = document.getElementById('webcam');
-    const status = document.getElementById('status');
-    const scanBtn = document.getElementById('scanBtn');
+    const msg = document.getElementById('msg');
+    const btn = document.getElementById('captureBtn');
 
-    async function init() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            status.textContent = "Engine Ready.";
-        } catch (e) { status.textContent = "Cam Error: " + e.message; }
-    }
+    // 1. Camera Init
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(stream => video.srcObject = stream)
+        .catch(e => msg.textContent = "Camera Error!");
 
-    scanBtn.addEventListener('click', async () => {
-        scanBtn.disabled = true;
-        status.textContent = "Scanning (Please wait)...";
+    // 2. Capture and Send Logic
+    btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        msg.textContent = "Capturing...";
 
+        // Snapshot
         const canvas = document.createElement('canvas');
-        canvas.width = 400; canvas.height = 150;
-        const ctx = canvas.getContext('2d');
-        
-        // Adjust these coords if serial is missed:
-        ctx.drawImage(video, video.videoWidth*0.2, video.videoHeight*0.45, video.videoWidth*0.6, video.videoHeight*0.15, 0,0, 400, 150);
+        canvas.width = 640; canvas.height = 360; // Lightweight resolution
+        canvas.getContext('2d').drawImage(video, 0, 0, 640, 360);
+        const imageData = canvas.toDataURL('image/jpeg', 0.6); // 60% quality
 
-        try {
-            // Using direct recognize() - Much more stable on mobile
-            const result = await Tesseract.recognize(canvas, 'eng');
-            
-            let raw = result.data.text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            raw = raw.replace(/O/g, '0').replace(/I/g, '1').replace(/Z/g, '2');
+        // Get Location
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const data = {
+                image: imageData,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                time: new Date().toISOString()
+            };
 
-            // Find pattern like: 123ABC456 or ABC123456
-            const match = raw.match(/([0-9][A-Z0-9]{2}[0-9]{6})/);
-
-            if (match) {
-                alert("Serial Detected: " + match[1]);
-                status.textContent = "Found: " + match[1];
-            } else {
-                status.textContent = "Could not read. Try clear light.";
+            // Send to Server
+            msg.textContent = "Sending to Server...";
+            try {
+                const response = await fetch('https://YOUR_SERVER_ENDPOINT/upload', {
+                    method: 'POST',
+                    body: JSON.stringify(data),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                msg.textContent = "Sent Successfully!";
+                setTimeout(() => btn.disabled = false, 2000);
+            } catch(e) {
+                msg.textContent = "Upload Failed: " + e.message;
+                btn.disabled = false;
             }
-        } catch (e) {
-            status.textContent = "Error: " + e.message;
-        } finally {
-            scanBtn.disabled = false;
-        }
+        }, (e) => {
+            msg.textContent = "Location required!";
+            btn.disabled = false;
+        });
     });
-
-    window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
