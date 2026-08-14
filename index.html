@@ -1,114 +1,180 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Money Hunter | Core App</title>
+    <title>Money Hunter | Forensic Note Tracker</title>
     
     <!-- Supabase JS Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        :root { --paper: #fcf8f2; --ink: #1a202c; --gold: #b8923f; --bg-dark: #0d1117; --green: #2f7a4a; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg-dark); font-family: sans-serif; height: 100vh; overflow: hidden; }
+        :root {
+            --paper: #fcf8f2;
+            --ink: #1a202c;
+            --gold: #b8923f;
+            --bg-dark: #0d1117;
+            --green: #2f7a4a;
+            --red: #e53e3e;
+            --card-bg: #161b22;
+        }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg-dark); height: 100vh; overflow: hidden; color: #fff; }
+
+        /* Screen Toggle Logic */
         .screen { display: none; height: 100vh; width: 100%; position: absolute; top:0; left:0; }
         .screen.active { display: flex; flex-direction: column; z-index: 10; }
 
-        /* Camera Screen */
-        .cam-view { flex: 1; position: relative; background: #000; }
+        /* SCREEN 1: CAMERA SCANNER */
+        .cam-view { flex: 1; position: relative; background: #000; display: flex; align-items: center; justify-content: center; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        .overlay { position: absolute; inset: 0; pointer-events: none; display: flex; justify-content: center; align-items: center; }
-        .viewfinder { width: 250px; height: 100px; border: 3px dashed var(--gold); border-radius: 8px; }
-        .ui-bottom { background: var(--bg-dark); color: #fff; padding: 25px; text-align: center; }
-        #captureBtn { padding: 16px 36px; background: var(--gold); color: #000; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; }
-        #msg { color: var(--gold); font-size: 13px; margin-bottom: 12px; font-family: monospace; }
+        .overlay { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .viewfinder { width: 280px; height: 120px; border: 3px dashed var(--gold); border-radius: 12px; box-shadow: 0 0 20px rgba(184, 146, 63, 0.3); }
+        .scan-hint { margin-top: 15px; color: var(--gold); font-size: 12px; letter-spacing: 1px; font-weight: 600; text-transform: uppercase; }
 
-        /* Reveal / Result Screen */
-        .reveal { background: var(--paper); padding: 30px; color: var(--ink); height: 100vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .status-badge { display: inline-block; padding: 6px 14px; background: var(--green); color: #fff; border-radius: 6px; font-size: 12px; font-weight: 700; margin-bottom: 15px; }
-        .timestamp { font-family: monospace; font-size: 13px; color: #666; margin-top: 10px; }
-        .btn-scan { background: var(--ink); color: #fff; padding: 14px 28px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 30px; }
+        .ui-bottom { background: var(--card-bg); padding: 20px; text-align: center; border-top: 1px solid #30363d; }
+        #msg { color: #8b949e; font-size: 13px; margin-bottom: 12px; font-family: monospace; }
+        #captureBtn { padding: 16px 36px; background: var(--gold); color: #000; border: none; border-radius: 50px; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.2s; }
+        #captureBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* SCREEN 2: REVEAL / REPORT */
+        .reveal-container { background: var(--paper); padding: 25px; color: var(--ink); height: 100vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        
+        /* Great Citizen Banner */
+        .citizen-badge { background: #e6f4ea; border: 1px solid #a8dab5; color: var(--green); padding: 12px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; text-align: center; margin-bottom: 20px; width: 100%; max-width: 400px; line-height: 1.4; }
+        
+        .status-badge { display: inline-block; padding: 6px 16px; border-radius: 50px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; }
+        .status-badge.clean { background: #d4edda; color: var(--green); }
+        .status-badge.risk { background: #f8d7da; color: var(--red); }
+
+        .card { background: #fff; border-radius: 12px; padding: 20px; width: 100%; max-width: 400px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; border: 1px solid #e1e4e8; }
+        .card h3 { font-size: 14px; color: #57606a; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .info-label { color: #57606a; }
+        .info-value { font-weight: 600; font-family: monospace; }
+
+        .btn-group { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 400px; margin-top: 10px; }
+        .btn-primary { background: var(--ink); color: #fff; padding: 14px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; text-align: center; }
+        .btn-report { background: var(--red); color: #fff; padding: 12px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; display: none; }
     </style>
 </head>
 <body>
 
-    <!-- SCREEN 1: SCANNER -->
+    <!-- SCREEN 1: SCANNER VIEW -->
     <div class="screen active" id="scanScreen">
         <div class="cam-view">
             <video id="webcam" autoplay playsinline muted></video>
-            <div class="overlay"><div class="viewfinder"></div></div>
+            <div class="overlay">
+                <div class="viewfinder"></div>
+                <div class="scan-hint">Align Note Serial Number Inside Box</div>
+            </div>
         </div>
         <div class="ui-bottom">
-            <div id="msg">Ready to scan note...</div>
-            <button id="captureBtn">SNAP & SAVE</button>
+            <div id="msg">Ready to hunt note...</div>
+            <button id="captureBtn">SNAP & HUNT NOTE</button>
         </div>
     </div>
 
-    <!-- SCREEN 2: REVEAL / RESULT -->
+    <!-- SCREEN 2: REVEAL / FORENSIC VIEW -->
     <div class="screen" id="revealScreen">
-        <div class="reveal">
-            <div class="status-badge">SUCCESSFULLY SAVED</div>
-            <h2>Note Captured & Logged</h2>
-            <div class="timestamp" id="scanTime">---</div>
-            <button class="btn-scan" onclick="resetApp()">Scan Another Note</button>
+        <div class="reveal-container">
+            
+            <!-- Positive Reinforcement Citizen Statement -->
+            <div class="citizen-badge">
+                🎖️ <b>You are a great citizen!</b><br>Scan notes & stay safe from Black or Fake money.
+            </div>
+
+            <!-- Dynamic Status Badge -->
+            <div class="status-badge clean" id="statusBadge">VERIFIED CLEAN NOTE</div>
+
+            <!-- Note Information Card -->
+            <div class="card">
+                <h3>Note Details & History</h3>
+                <div class="info-row">
+                    <span class="info-label">Current Scan:</span>
+                    <span class="info-value" id="scanTime">--:--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">GPS Location:</span>
+                    <span class="info-value" id="geoCoords">0.0, 0.0</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Previous Track:</span>
+                    <span class="info-value" id="prevTrack">2 Logs Found (Clean)</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="btn-group">
+                <button class="btn-report" id="reportBtn" onclick="reportToCentralHub()">🚨 Report Anomaly to Central Hub</button>
+                <button class="btn-primary" onclick="resetApp()">Scan Another Note</button>
+            </div>
+
         </div>
     </div>
 
 <script>
-    // Supabase Configuration
-    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co"; // Replace with your URL
-    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";         // Replace with your Key
-    
+    // -------------------------------------------------------------
+    // 1. SUPABASE CONFIGURATION (Daalna mat bhoolna)
+    // -------------------------------------------------------------
+    const RAW_URL = "https://YOUR_PROJECT_ID.supabase.co"; // Replace with your Project URL
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";         // Replace with your Anon Key
+
+    const SUPABASE_URL = RAW_URL.trim().replace(/\/$/, "");
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // DOM Elements
     const video = document.getElementById('webcam');
     const msg = document.getElementById('msg');
     const captureBtn = document.getElementById('captureBtn');
     const scanScreen = document.getElementById('scanScreen');
     const revealScreen = document.getElementById('revealScreen');
 
-    // Init Camera
+    // Init Webcam Stream
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
         .then(stream => video.srcObject = stream)
-        .catch(e => msg.textContent = "Camera Error!");
+        .catch(e => msg.textContent = "Camera Access Error!");
 
-    // Capture & Save Trigger
+    // Capture & Scan Event Handler
     captureBtn.addEventListener('click', async () => {
         captureBtn.disabled = true;
-        msg.textContent = "Capturing image...";
+        msg.textContent = "Capturing Image...";
 
-        // 1. Snapshot creation
+        // 1. Image Canvas Snapshot
         const canvas = document.createElement('canvas');
-        canvas.width = 640; canvas.height = 360;
-        canvas.getContext('2d').drawImage(video, 0, 0, 640, 360);
-        const imageBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        canvas.width = 480; canvas.height = 270;
+        canvas.getContext('2d').drawImage(video, 0, 0, 480, 270);
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.5);
 
-        // 2. Location fetch
-        msg.textContent = "Getting Location...";
+        // 2. Geolocation Fetch
+        msg.textContent = "Fetching Location Data...";
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            msg.textContent = "Saving to database...";
+            msg.textContent = "Checking Database & Anomaly...";
 
             try {
                 const scanTime = new Date().toISOString();
-                
-                // 3. Supabase Insert
-                const { error } = await supabaseClient
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+
+                // 3. Supabase DB Save
+                const { data, error } = await supabaseClient
                     .from('scans')
                     .insert([
                         {
                             image_data: imageBase64,
-                            latitude: pos.coords.latitude,
-                            longitude: pos.coords.longitude,
+                            latitude: lat,
+                            longitude: lng,
                             scanned_at: scanTime
                         }
                     ]);
 
                 if (error) throw error;
 
-                // 4. Switch to Reveal Screen on Success
-                showResultScreen(scanTime);
+                // 4. Reveal Results with Simulated Anomaly Check Logic
+                const isAnomaly = checkAnomalySimulation(lat, lng);
+                showResultScreen(scanTime, lat, lng, isAnomaly);
 
             } catch (err) {
                 msg.textContent = "Error: " + err.message;
@@ -116,23 +182,54 @@
             }
 
         }, (err) => {
-            msg.textContent = "GPS Error: Please enable location";
+            msg.textContent = "GPS Error: Please enable Location!";
             captureBtn.disabled = false;
         });
     });
 
-    function showResultScreen(timeStr) {
-        scanScreen.classList.remove('active');
-        revealScreen.classList.add('active');
-        document.getElementById('scanTime').textContent = "Recorded at: " + new Date(timeStr).toLocaleString();
+    // Mock Logic for Anomaly Check (Can be connected to real DB triggers later)
+    function checkAnomalySimulation(lat, lng) {
+        // 10% Random chance simulation for demonstration, otherwise Clean
+        return Math.random() < 0.1; 
     }
 
+    // Switch Screen UI Function
+    function showResultScreen(timeStr, lat, lng, isAnomaly) {
+        scanScreen.classList.remove('active');
+        revealScreen.classList.add('active');
+
+        document.getElementById('scanTime').textContent = new Date(timeStr).toLocaleTimeString();
+        document.getElementById('geoCoords').textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+        const statusBadge = document.getElementById('statusBadge');
+        const reportBtn = document.getElementById('reportBtn');
+
+        if (isAnomaly) {
+            statusBadge.className = "status-badge risk";
+            statusBadge.textContent = "⚠️ POTENTIAL FAKE / BLACK MONEY DETECTED";
+            reportBtn.style.display = "block"; // Show Report Option
+        } else {
+            statusBadge.className = "status-badge clean";
+            statusBadge.textContent = "✅ VERIFIED CLEAN NOTE";
+            reportBtn.style.display = "none";  // Hide Report Option for Normal Notes
+        }
+    }
+
+    // Report Button Functionality
+    function reportToCentralHub() {
+        alert("Alert Highlighted! Note Data & Forensic Snapshot sent to Central Hub Database.");
+        document.getElementById('reportBtn').disabled = true;
+        document.getElementById('reportBtn').textContent = "✓ Reported to Hub";
+    }
+
+    // Reset App to Camera Screen
     function resetApp() {
         revealScreen.classList.remove('active');
         scanScreen.classList.add('active');
         captureBtn.disabled = false;
-        msg.textContent = "Ready to scan note...";
+        msg.textContent = "Ready to hunt note...";
     }
 </script>
 </body>
-</html>
+    </html>
+    
