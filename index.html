@@ -3,98 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Money Hunter | Supabase Direct</title>
+    <title>Money Hunter | Core App</title>
     
-    <!-- 1. Supabase JS Client Library -->
+    <!-- Supabase JS Client Library -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; height: 100vh; overflow: hidden; }
-        #webcam { width: 100%; height: 100%; object-fit: cover; }
-        .ui { position: absolute; bottom: 30px; width: 100%; text-align: center; }
-        #captureBtn { padding: 18px 36px; background: #b8923f; color: #000; border: none; border-radius: 50px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        #captureBtn:disabled { opacity: 0.5; }
-        .overlay { position: absolute; inset: 0; pointer-events: none; border: 3px dashed #b8923f; margin: 25% 10%; border-radius: 12px; }
-        #msg { font-size: 14px; margin-bottom: 12px; font-family: monospace; color: #b8923f; }
+        :root { --paper: #fcf8f2; --ink: #1a202c; --gold: #b8923f; --bg-dark: #0d1117; --green: #2f7a4a; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg-dark); font-family: sans-serif; height: 100vh; overflow: hidden; }
+
+        .screen { display: none; height: 100vh; width: 100%; position: absolute; top:0; left:0; }
+        .screen.active { display: flex; flex-direction: column; z-index: 10; }
+
+        /* Camera Screen */
+        .cam-view { flex: 1; position: relative; background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        .overlay { position: absolute; inset: 0; pointer-events: none; display: flex; justify-content: center; align-items: center; }
+        .viewfinder { width: 250px; height: 100px; border: 3px dashed var(--gold); border-radius: 8px; }
+        .ui-bottom { background: var(--bg-dark); color: #fff; padding: 25px; text-align: center; }
+        #captureBtn { padding: 16px 36px; background: var(--gold); color: #000; border: none; border-radius: 50px; font-weight: bold; cursor: pointer; }
+        #msg { color: var(--gold); font-size: 13px; margin-bottom: 12px; font-family: monospace; }
+
+        /* Reveal / Result Screen */
+        .reveal { background: var(--paper); padding: 30px; color: var(--ink); height: 100vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .status-badge { display: inline-block; padding: 6px 14px; background: var(--green); color: #fff; border-radius: 6px; font-size: 12px; font-weight: 700; margin-bottom: 15px; }
+        .timestamp { font-family: monospace; font-size: 13px; color: #666; margin-top: 10px; }
+        .btn-scan { background: var(--ink); color: #fff; padding: 14px 28px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 30px; }
     </style>
 </head>
 <body>
 
-    <video id="webcam" autoplay playsinline muted></video>
-    <div class="overlay"></div>
-    <div class="ui">
-        <div id="msg">Ready to scan...</div>
-        <button id="captureBtn">SNAP & SAVE TO SUPABASE</button>
+    <!-- SCREEN 1: SCANNER -->
+    <div class="screen active" id="scanScreen">
+        <div class="cam-view">
+            <video id="webcam" autoplay playsinline muted></video>
+            <div class="overlay"><div class="viewfinder"></div></div>
+        </div>
+        <div class="ui-bottom">
+            <div id="msg">Ready to scan note...</div>
+            <button id="captureBtn">SNAP & SAVE</button>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: REVEAL / RESULT -->
+    <div class="screen" id="revealScreen">
+        <div class="reveal">
+            <div class="status-badge">SUCCESSFULLY SAVED</div>
+            <h2>Note Captured & Logged</h2>
+            <div class="timestamp" id="scanTime">---</div>
+            <button class="btn-scan" onclick="resetApp()">Scan Another Note</button>
+        </div>
     </div>
 
 <script>
-    // 2. Apni Supabase Credentials Yahan Daalein
-    const SUPABASE_URL = "https://cxouquidwolawekliwyv.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4b3VxdWlkd29sYXdla2xpd3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2MDQ2MjUsImV4cCI6MjEwMjE4MDYyNX0.irlELy8ig3Gn0d5PaYbJPi1js-nXcfrG-OrDJctw7aA";
+    // Supabase Configuration
+    const SUPABASE_URL = "https://YOUR_PROJECT_ID.supabase.co"; // Replace with your URL
+    const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";         // Replace with your Key
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const video = document.getElementById('webcam');
     const msg = document.getElementById('msg');
-    const btn = document.getElementById('captureBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const scanScreen = document.getElementById('scanScreen');
+    const revealScreen = document.getElementById('revealScreen');
 
-    // Camera Init
+    // Init Camera
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
         .then(stream => video.srcObject = stream)
-        .catch(e => msg.textContent = "Camera Permission Denied!");
+        .catch(e => msg.textContent = "Camera Error!");
 
-    // Capture & Save directly to Supabase
-    btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        msg.textContent = "Creating Virtual Copy...";
+    // Capture & Save Trigger
+    captureBtn.addEventListener('click', async () => {
+        captureBtn.disabled = true;
+        msg.textContent = "Capturing image...";
 
-        // 1. Create Lightweight Snapshot (640x360)
+        // 1. Snapshot creation
         const canvas = document.createElement('canvas');
         canvas.width = 640; canvas.height = 360;
-        const ctx = canvas.getContext('2d');
-        
-        // Simple contrast boost for clean image
-        ctx.filter = 'contrast(120%) brightness(105%)';
-        ctx.drawImage(video, 0, 0, 640, 360);
+        canvas.getContext('2d').drawImage(video, 0, 0, 640, 360);
         const imageBase64 = canvas.toDataURL('image/jpeg', 0.6);
 
-        // 2. Get Live GPS Location
+        // 2. Location fetch
         msg.textContent = "Getting Location...";
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            
-            msg.textContent = "Saving to Supabase Database...";
+            msg.textContent = "Saving to database...";
 
-            // 3. Direct Insert into Supabase Table
             try {
-                const { data, error } = await supabaseClient
+                const scanTime = new Date().toISOString();
+                
+                // 3. Supabase Insert
+                const { error } = await supabaseClient
                     .from('scans')
                     .insert([
                         {
                             image_data: imageBase64,
                             latitude: pos.coords.latitude,
                             longitude: pos.coords.longitude,
-                            scanned_at: new Date().toISOString()
+                            scanned_at: scanTime
                         }
                     ]);
 
                 if (error) throw error;
 
-                msg.textContent = "✅ Saved Successfully to Supabase!";
-                setTimeout(() => {
-                    msg.textContent = "Ready to scan next note...";
-                    btn.disabled = false;
-                }, 2500);
+                // 4. Switch to Reveal Screen on Success
+                showResultScreen(scanTime);
 
             } catch (err) {
-                msg.textContent = "❌ Supabase Error: " + err.message;
-                btn.disabled = false;
+                msg.textContent = "Error: " + err.message;
+                captureBtn.disabled = false;
             }
 
         }, (err) => {
-            msg.textContent = "Location Error: Please turn on GPS";
-            btn.disabled = false;
+            msg.textContent = "GPS Error: Please enable location";
+            captureBtn.disabled = false;
         });
     });
+
+    function showResultScreen(timeStr) {
+        scanScreen.classList.remove('active');
+        revealScreen.classList.add('active');
+        document.getElementById('scanTime').textContent = "Recorded at: " + new Date(timeStr).toLocaleString();
+    }
+
+    function resetApp() {
+        revealScreen.classList.remove('active');
+        scanScreen.classList.add('active');
+        captureBtn.disabled = false;
+        msg.textContent = "Ready to scan note...";
+    }
 </script>
 </body>
 </html>
