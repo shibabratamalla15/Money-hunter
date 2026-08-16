@@ -1,121 +1,446 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>My Android App</title>
+    <title>CCLTS - Banknote Verification System</title>
     <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --card-bg: #161f30;
+            --card-border: #233148;
+            --accent-blue: #6366f1;
+            --accent-gold: #f59e0b;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             -webkit-tap-highlight-color: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         body {
-            background-color: #f4f6f9;
-            color: #333;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 100vh;
             overflow: hidden;
         }
 
-        /* Top Header */
+        /* Top Bar */
         header {
-            background-color: #6200ee;
-            color: white;
-            padding: 16px;
-            text-align: center;
-            font-size: 20px;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background: linear-gradient(180deg, #121826 0%, #0b0f19 100%);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
         }
 
-        /* Main App Body */
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-badge {
+            background: rgba(99, 102, 241, 0.2);
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .system-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .node-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            background-color: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        /* Main View Container */
         main {
             flex: 1;
-            padding: 16px;
-            overflow-y: auto;
-        }
-
-        .card {
-            background: white;
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            margin-bottom: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
-        .btn {
-            display: block;
+        /* Denomination Grid */
+        .section-label {
+            font-size: 12px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .denom-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .denom-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text-sub);
+            padding: 12px 0;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .denom-btn.active {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        /* Input Card */
+        .input-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .serial-input {
             width: 100%;
-            padding: 14px;
-            background-color: #6200ee;
+            background: #0b0f19;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 16px;
+            color: var(--accent-gold);
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            outline: none;
+            text-align: center;
+        }
+
+        .serial-input:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        .input-hint {
+            font-size: 11px;
+            color: var(--text-sub);
+            text-align: center;
+        }
+
+        /* CTA Button */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #4f46e5 100%);
             color: white;
             border: none;
-            border-radius: 8px;
+            padding: 16px;
+            border-radius: 12px;
             font-size: 16px;
-            font-weight: bold;
+            font-weight: 700;
             cursor: pointer;
-            text-align: center;
-            transition: background 0.2s;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
         }
 
-        .btn:active {
-            background-color: #3700b3;
+        .btn-primary:active {
+            transform: scale(0.98);
         }
 
-        /* Bottom Navigation Bar */
+        /* Result Panel */
+        .result-panel {
+            display: none;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status-badge-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .status-tag {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .meta-label { color: var(--text-sub); }
+        .meta-val { color: var(--text-main); font-weight: 600; font-family: monospace; }
+
+        /* Timeline Preview */
+        .timeline-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+        .step {
+            display: flex;
+            gap: 12px;
+            position: relative;
+            padding-bottom: 16px;
+        }
+
+        .step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 24px;
+            bottom: 0;
+            width: 2px;
+            background: var(--card-border);
+        }
+
+        .step-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 1;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title { font-size: 13px; font-weight: 600; }
+        .step-time { font-size: 11px; color: var(--text-sub); }
+
+        /* Bottom Nav */
         nav {
+            background: #121826;
+            border-top: 1px solid var(--card-border);
             display: flex;
             justify-content: space-around;
-            background: white;
-            border-top: 1px solid #e0e0e0;
-            padding: 10px 0;
+            padding: 12px 0;
         }
 
         .nav-item {
+            color: var(--text-sub);
             text-decoration: none;
-            color: #777;
-            font-size: 12px;
+            font-size: 11px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 4px;
+            font-weight: 500;
         }
 
         .nav-item.active {
-            color: #6200ee;
-            font-weight: bold;
+            color: var(--accent-blue);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
 
     <header>
-        My App
+        <div class="logo-area">
+            <span class="logo-badge">RBI / CCLTS</span>
+            <span class="system-title">Money Hunter</span>
+        </div>
+        <div class="node-status">
+            <span class="status-dot"></span>
+            Node Layer-1
+        </div>
     </header>
 
     <main>
-        <div class="card">
-            <h2>Welcome!</h2>
-            <p style="margin-top: 8px; color: #666;">Yeh Android WebView ke liye tayar kiya gaya index.html file hai.</p>
+        <div>
+            <div class="section-label">Select Denomination</div>
+            <div class="denom-grid">
+                <button class="denom-btn" onclick="selectDenom(100, this)">₹100</button>
+                <button class="denom-btn" onclick="selectDenom(200, this)">₹200</button>
+                <button class="denom-btn active" onclick="selectDenom(500, this)">₹500</button>
+                <button class="denom-btn" onclick="selectDenom(2000, this)">₹2000</button>
+            </div>
         </div>
 
-        <button class="btn" onclick="handleClick()">Click Me</button>
+        <div class="input-card">
+            <div class="section-label">Manual Serial Key-In</div>
+            <div class="input-wrapper">
+                <input type="text" id="serialInput" class="serial-input" placeholder="4AA 123456" maxlength="10" oninput="formatSerial(this)">
+            </div>
+            <div class="input-hint">Format: 2 Letters + 1 Alpha/Num + 6 Digits (HSM SHA256 Shielded)</div>
+            <button class="btn-primary" onclick="verifyNote()">
+                Verify Currency Status
+            </button>
+        </div>
+
+        <div id="resultPanel" class="result-panel">
+            <div class="status-badge-container">
+                <div>
+                    <div class="section-label" style="margin: 0;">Ledger Verdict</div>
+                    <div style="font-size: 16px; font-weight: 700; margin-top: 2px;">Authentic Banknote</div>
+                </div>
+                <div class="status-tag">Valid & In-Region</div>
+            </div>
+            
+            <div class="meta-row">
+                <span class="meta-label">HSM HMAC Hash:</span>
+                <span class="meta-val" id="hashDisplay">8f3a...c92b</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">Geohash Grid:</span>
+                <span class="meta-val">2.5km Coarse Blur</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">Velocity Check:</span>
+                <span class="meta-val" style="color: var(--success);">Normal (&lt; 1.2/day)</span>
+            </div>
+        </div>
+
+        <div class="timeline-card">
+            <div class="section-label">Sample Note Journey</div>
+            <div style="margin-top: 12px;">
+                <div class="step">
+                    <div class="step-icon">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Vault Issuance</div>
+                        <div class="step-time">Kolkata Currency Chest • 12 Days ago</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-icon">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Mandatory Institutional Touchpoint</div>
+                        <div class="step-time">HP Petrol Pump Node • 3 Days ago</div>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-icon">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Current Scan Node</div>
+                        <div class="step-time">Guwahati Commercial Node • Just Now</div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <nav>
-        <a href="#" class="nav-item active">Home</a>
-        <a href="#" class="nav-item">Search</a>
-        <a href="#" class="nav-item">Profile</a>
+        <a href="#" class="nav-item active">
+            <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Verify
+        </a>
+        <a href="#" class="nav-item">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 20l-5-4V4l5 4 5-4 5 4v12l-5-4-5 4z"/></svg>
+            Journey
+        </a>
+        <a href="#" class="nav-item">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            Stats
+        </a>
     </nav>
 
     <script>
-        function handleClick() {
-            alert("App fully functional hai!");
+        let selectedDenom = 500;
+
+        function selectDenom(amount, element) {
+            selectedDenom = amount;
+            document.querySelectorAll('.denom-btn').forEach(btn => btn.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function formatSerial(input) {
+            let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (val.length > 3) {
+                val = val.substring(0, 3) + ' ' + val.substring(3, 9);
+            }
+            input.value = val;
+        }
+
+        function verifyNote() {
+            const input = document.getElementById('serialInput').value;
+            if (input.length < 8) {
+                alert('Kripya valid 9-digit Serial Number darj karein (e.g. 4AA 123456)');
+                return;
+            }
+
+            const resultPanel = document.getElementById('resultPanel');
+            const hashDisplay = document.getElementById('hashDisplay');
+
+            // Generate mock HMAC SHA256 hash preview
+            const mockHash = Array.from({length: 8}, () => Math.floor(Math.random()*16).toString(16)).join('');
+            hashDisplay.innerText = `e4${mockHash}...7f`;
+
+            resultPanel.style.display = 'block';
+            resultPanel.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
-</html>
+    </html>
+                
