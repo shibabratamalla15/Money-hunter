@@ -144,6 +144,11 @@
         }
         .status-tag.dupe { background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); }
         .status-tag.err { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        .step-flag {
+            display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 700;
+            color: var(--accent-gold); background: rgba(245, 158, 11, 0.15);
+            padding: 1px 6px; border-radius: 6px; vertical-align: middle;
+        }
 
         .meta-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
         .meta-label { color: var(--text-sub); }
@@ -219,6 +224,9 @@
                 <input type="text" id="serialInput" class="serial-input" placeholder="4AA 123456" maxlength="10" oninput="formatSerial(this)">
             </div>
             <div class="input-hint">Format: 1 digit + 2 alphanumeric + 6 digits</div>
+            <div class="input-wrapper">
+                <input type="text" id="cityLabelInput" class="serial-input" style="font-size: 14px; letter-spacing: normal; text-transform: none; color: var(--text-main);" placeholder="Area / landmark (optional)" maxlength="60">
+            </div>
             <button class="btn-primary" id="submitBtn" onclick="submitScan()">
                 Log This Sighting
             </button>
@@ -243,10 +251,9 @@
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 20l-5-4V4l5 4 5-4 5 4v12l-5-4-5 4z"/></svg>
             Trail
         </a>
-    </nav>
-
-    <script type="module">
-        import { isValidSerialFormat, captureGeohash6 } from '/ocr-engine.js';
+                </nav>
+        <script type="module">
+        import { isValidSerialFormat, captureGeohash6, segmentAndCorrect } from '/ocr-engine.js';
 
         const API_BASE = '';
 
@@ -279,8 +286,11 @@
                 <div class="step">
                     <div class="step-icon">${i + 1}</div>
                     <div class="step-content">
-                        <div class="step-title">${escapeHtml(s.city_label || s.geohash6)} · ${escapeHtml(s.scan_source)}</div>
-                        <div class="step-time">${new Date(s.scanned_at).toLocaleString()}</div>
+                        <div class="step-title">
+                            ${escapeHtml(s.city_label || s.geohash6)} · ${escapeHtml(s.scan_source)}
+                            ${s.potential_duplicate ? '<span class="step-flag">Potential Duplicate</span>' : ''}
+                        </div>
+                        <div class="step-time">${new Date(s.scanned_at).toLocaleString()}${s.city_label ? ` · cell ${escapeHtml(s.geohash6)}` : ''}</div>
                     </div>
                 </div>
             `).join('');
@@ -327,13 +337,17 @@
 
         window.submitScan = async function () {
             const serialInput = document.getElementById('serialInput');
-            const raw = serialInput.value.trim().toUpperCase();
+            const typed = serialInput.value.trim().toUpperCase();
             const btn = document.getElementById('submitBtn');
 
+            const corrected = segmentAndCorrect(typed);
+            const raw = corrected ? corrected.formatted : typed;
+
             if (!isValidSerialFormat(raw)) {
-                alert('Enter a valid serial (e.g. 4AA 123456)');
+                alert('Enter a valid serial (e.g. 4AA 123456) — the last 6 characters must be digits.');
                 return;
             }
+            serialInput.value = raw;
 
             btn.disabled = true;
             btn.textContent = 'Getting location…';
@@ -350,11 +364,14 @@
 
             btn.textContent = 'Submitting…';
 
+            const cityLabel = document.getElementById('cityLabelInput').value.trim();
+
             const form = new FormData();
             form.append('serial_number', raw);
             form.append('geohash6', geohash6);
             form.append('scan_source', 'citizen');
             form.append('denom', String(selectedDenom));
+            if (cityLabel) form.append('city_label', cityLabel);
 
             try {
                 const res = await fetch(`${API_BASE}/v1/scans`, { method: 'POST', body: form });
@@ -369,11 +386,22 @@
                     });
                 } else if (data.duplicate_today) {
                     renderResult({
-                        message: 'Already logged today',
+                        message: 'Already logged from this spot today',
                         tagClass: 'dupe',
                         tagText: 'Duplicate',
                         meta: [
                             ['Serial', data.serial_number],
+                            ['Total sightings', String(data.trail?.length ?? '—')],
+                        ],
+                    });
+                } else if (data.potential_duplicate) {
+                    renderResult({
+                        message: 'Logged — seen elsewhere today too',
+                        tagClass: 'dupe',
+                        tagText: 'Potential Duplicate',
+                        meta: [
+                            ['Serial', data.serial_number],
+                            ['Geohash cell', geohash6],
                             ['Total sightings', String(data.trail?.length ?? '—')],
                         ],
                     });
@@ -410,4 +438,4 @@
         checkHealth();
     </script>
 </body>
-    </html>
+</html>
