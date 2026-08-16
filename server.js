@@ -92,24 +92,44 @@ app.post("/v1/scans", upload.single("photo"), async (req, res) => {
       photo_url = publicUrl.publicUrl;
     }
 
-    // 3. Insert the scan. The UNIQUE(note_id, scan_date) constraint is the
-    // real throttle enforcement — this is a defense-in-depth check so we can
-    // return a friendly "already scanned today" response instead of a raw
-    // constraint-violation error.
+    // 3. Insert the scan.
+    //    - same note + same day + same location  -> first scan wins, this
+    //      is a graceful no-op duplicate (not flagged, not an error)
+    //    - same note + same day + different location -> still registers,
+    //      but marked potential_duplicate for review
+    //    - same note + different day -> always a normal, unflagged insert
+    // The UNIQUE(note_id, scan_date, geohash6) constraint is the real
+    // enforcement for the first case; the checks below are for friendly
+    // responses and for setting the potential_duplicate flag.
     const today = new Date().toISOString().slice(0, 10);
-    const { data: existingToday } = await supabase
+
+    const { data: exactMatch } = await supabase
       .from("scans")
-      .select("scan_id, scanned_at, geohash6, city_label, photo_url")
+      .select("scan_id, scanned_at, geohash6, city_label, photo_url, potential_duplicate")
       .eq("note_id", note.note_id)
       .eq("scan_date", today)
+      .eq("geohash6", geohash6)
       .maybeSingle();
 
-    let scanRow = existingToday;
+    let scanRow = exactMatch;
     let duplicateToday = false;
+    let potentialDuplicate = false;
 
-    if (existingToday) {
+    if (exactMatch) {
       duplicateToday = true; // graceful UX: no new row, no storage cost, but not an error
     } else {
+      // Any other scan for this note today, regardless of location, means
+      // this new one is a same-day sighting at a different spot.
+      const { data: sameDayDifferentSpot } = await supabase
+        .from("scans")
+        .select("scan_id")
+        .eq("note_id", note.note_id)
+        .eq("scan_date", today)
+        .limit(1)
+        .maybeSingle();
+
+      potentialDuplicate = !!sameDayDifferentSpot;
+
       const { data: inserted, error: insertErr } = await supabase
         .from("scans")
         .insert({
@@ -121,20 +141,23 @@ app.post("/v1/scans", upload.single("photo"), async (req, res) => {
           photo_url,
           liveness_ok: liveness_ok === "false" ? false : liveness_ok === false ? false : true,
           scan_date: today,
+          potential_duplicate: potentialDuplicate,
         })
         .select()
         .single();
 
-      // A concurrent request racing us to the same (note_id, scan_date) pair
-      // hits the unique constraint here rather than the pre-check above —
-      // treat that the same way as a graceful duplicate, not a 500.
+      // A concurrent request racing us to the same (note_id, scan_date,
+      // geohash6) triple hits the unique constraint here rather than the
+      // pre-check above — treat that the same way as a graceful duplicate.
       if (insertErr && insertErr.code === "23505") {
         duplicateToday = true;
+        potentialDuplicate = false;
         const { data: raceLoser } = await supabase
           .from("scans")
-          .select("scan_id, scanned_at, geohash6, city_label, photo_url")
+          .select("scan_id, scanned_at, geohash6, city_label, photo_url, potential_duplicate")
           .eq("note_id", note.note_id)
           .eq("scan_date", today)
+          .eq("geohash6", geohash6)
           .maybeSingle();
         scanRow = raceLoser;
       } else if (insertErr) {
@@ -151,6 +174,7 @@ app.post("/v1/scans", upload.single("photo"), async (req, res) => {
     return res.status(duplicateToday ? 200 : 201).json({
       status: isFirstScan ? "first" : "repeat",
       duplicate_today: duplicateToday,
+      potential_duplicate: potentialDuplicate,
       note_id: note.note_id,
       serial_number,
       scan: scanRow,
@@ -187,7 +211,7 @@ app.get("/v1/notes/:serial", async (req, res) => {
 async function fetchTrail(noteId) {
   const { data, error } = await supabase
     .from("scans")
-    .select("scan_id, scanned_at, geohash6, city_label, scan_source, photo_url, liveness_ok")
+    .select("scan_id, scanned_at, geohash6, city_label, scan_source, photo_url, liveness_ok, potential_duplicate")
     .eq("note_id", noteId)
     .order("scanned_at", { ascending: true });
   if (error) throw error;
