@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CCLTS - Banknote Verification System</title>
+    <title>Money Hunter — Track the note, not the person</title>
+    <link rel="manifest" href="/manifest.json">
     <style>
         :root {
             --bg-dark: #0b0f19;
@@ -34,7 +35,6 @@
             overflow: hidden;
         }
 
-        /* Top Bar */
         header {
             background: linear-gradient(180deg, #121826 0%, #0b0f19 100%);
             padding: 16px 20px;
@@ -44,11 +44,7 @@
             border-bottom: 1px solid var(--card-border);
         }
 
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .logo-area { display: flex; align-items: center; gap: 10px; }
 
         .logo-badge {
             background: rgba(99, 102, 241, 0.2);
@@ -61,10 +57,7 @@
             letter-spacing: 1px;
         }
 
-        .system-title {
-            font-size: 16px;
-            font-weight: 700;
-        }
+        .system-title { font-size: 16px; font-weight: 700; }
 
         .node-status {
             display: flex;
@@ -76,249 +69,140 @@
             padding: 4px 10px;
             border-radius: 20px;
         }
+        .node-status.offline { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
 
         .status-dot {
-            width: 7px;
-            height: 7px;
-            background-color: var(--success);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--success);
+            width: 7px; height: 7px; background-color: var(--success);
+            border-radius: 50%; box-shadow: 0 0 8px var(--success);
         }
+        .node-status.offline .status-dot { background-color: var(--danger); box-shadow: 0 0 8px var(--danger); }
 
-        /* Main View Container */
         main {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+            flex: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 20px;
         }
 
-        /* Denomination Grid */
         .section-label {
-            font-size: 12px;
-            color: var(--text-sub);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 8px;
-            font-weight: 600;
+            font-size: 12px; color: var(--text-sub); text-transform: uppercase;
+            letter-spacing: 0.8px; margin-bottom: 8px; font-weight: 600;
         }
 
-        .denom-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
+        .disclaimer {
+            font-size: 11px; color: var(--text-sub); background: var(--card-bg);
+            border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 12px;
+            line-height: 1.5;
         }
+
+        .denom-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 
         .denom-btn {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            color: var(--text-sub);
-            padding: 12px 0;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-sub);
+            padding: 12px 0; border-radius: 10px; font-weight: 700; font-size: 14px;
+            cursor: pointer; transition: all 0.2s ease;
         }
-
         .denom-btn.active {
-            background: var(--accent-blue);
-            color: white;
-            border-color: var(--accent-blue);
+            background: var(--accent-blue); color: white; border-color: var(--accent-blue);
             box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
 
-        /* Input Card */
         .input-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .input-wrapper {
-            position: relative;
+            background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px;
+            padding: 20px; display: flex; flex-direction: column; gap: 16px;
         }
 
         .serial-input {
-            width: 100%;
-            background: #0b0f19;
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 16px;
-            color: var(--accent-gold);
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            outline: none;
-            text-align: center;
+            width: 100%; background: #0b0f19; border: 1px solid var(--card-border); border-radius: 12px;
+            padding: 16px; color: var(--accent-gold); font-size: 20px; font-weight: 700;
+            letter-spacing: 2px; text-transform: uppercase; outline: none; text-align: center;
         }
+        .serial-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
 
-        .serial-input:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-        }
+        .input-hint { font-size: 11px; color: var(--text-sub); text-align: center; }
 
-        .input-hint {
-            font-size: 11px;
-            color: var(--text-sub);
-            text-align: center;
-        }
-
-        /* CTA Button */
         .btn-primary {
             background: linear-gradient(135deg, var(--accent-blue) 0%, #4f46e5 100%);
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
+            color: white; border: none; padding: 16px; border-radius: 12px; font-size: 16px;
+            font-weight: 700; cursor: pointer; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            display: flex; justify-content: center; align-items: center; gap: 8px;
         }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        .btn-primary:active {
-            transform: scale(0.98);
-        }
-
-        /* Result Panel */
         .result-panel {
-            display: none;
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 20px;
-            animation: fadeIn 0.3s ease;
+            display: none; background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 16px; padding: 20px; animation: fadeIn 0.3s ease;
         }
 
         .status-badge-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--card-border);
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--card-border);
         }
 
         .status-tag {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 13px;
+            background: rgba(16, 185, 129, 0.15); color: var(--success);
+            padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 13px;
         }
+        .status-tag.dupe { background: rgba(245, 158, 11, 0.15); color: var(--accent-gold); }
+        .status-tag.err { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
 
-        .meta-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-
+        .meta-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
         .meta-label { color: var(--text-sub); }
         .meta-val { color: var(--text-main); font-weight: 600; font-family: monospace; }
 
-        /* Timeline Preview */
         .timeline-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 16px;
-            padding: 20px;
+            background: var(--card-bg); border: 1px solid var(--card-border);
+            border-radius: 16px; padding: 20px;
         }
 
-        .step {
-            display: flex;
-            gap: 12px;
-            position: relative;
-            padding-bottom: 16px;
-        }
-
+        .step { display: flex; gap: 12px; position: relative; padding-bottom: 16px; }
         .step:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            left: 11px;
-            top: 24px;
-            bottom: 0;
-            width: 2px;
-            background: var(--card-border);
+            content: ''; position: absolute; left: 11px; top: 24px; bottom: 0;
+            width: 2px; background: var(--card-border);
         }
-
         .step-icon {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: var(--accent-blue);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            font-weight: bold;
-            z-index: 1;
+            width: 24px; height: 24px; border-radius: 50%; background: var(--accent-blue);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px; font-weight: bold; z-index: 1; flex-shrink: 0;
         }
-
-        .step-content {
-            flex: 1;
-        }
-
+        .step-content { flex: 1; }
         .step-title { font-size: 13px; font-weight: 600; }
         .step-time { font-size: 11px; color: var(--text-sub); }
+        .empty-note { font-size: 12px; color: var(--text-sub); }
 
-        /* Bottom Nav */
         nav {
-            background: #121826;
-            border-top: 1px solid var(--card-border);
-            display: flex;
-            justify-content: space-around;
-            padding: 12px 0;
+            background: #121826; border-top: 1px solid var(--card-border);
+            display: flex; justify-content: space-around; padding: 12px 0;
         }
-
         .nav-item {
-            color: var(--text-sub);
-            text-decoration: none;
-            font-size: 11px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            font-weight: 500;
+            color: var(--text-sub); text-decoration: none; font-size: 11px;
+            display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 500;
         }
+        .nav-item.active { color: var(--accent-blue); }
 
-        .nav-item.active {
-            color: var(--accent-blue);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <header>
         <div class="logo-area">
-            <span class="logo-badge">RBI / CCLTS</span>
+            <span class="logo-badge">CITIZEN PROJECT</span>
             <span class="system-title">Money Hunter</span>
         </div>
-        <div class="node-status">
+        <div class="node-status" id="nodeStatus">
             <span class="status-dot"></span>
-            Node Layer-1
+            <span id="nodeStatusText">Checking API…</span>
         </div>
     </header>
 
     <main>
+        <div class="disclaimer">
+            Money Hunter is an independent, citizen-run crowdsourcing project. It is
+            <strong>not</strong> affiliated with the Reserve Bank of India or any government body.
+            It only records where a serial number has been scanned — it does <strong>not</strong>
+            verify whether a note is genuine or counterfeit. Never rely on this app to judge authenticity.
+        </div>
+
         <div>
             <div class="section-label">Select Denomination</div>
             <div class="denom-grid">
@@ -334,59 +218,18 @@
             <div class="input-wrapper">
                 <input type="text" id="serialInput" class="serial-input" placeholder="4AA 123456" maxlength="10" oninput="formatSerial(this)">
             </div>
-            <div class="input-hint">Format: 2 Letters + 1 Alpha/Num + 6 Digits (HSM SHA256 Shielded)</div>
-            <button class="btn-primary" onclick="verifyNote()">
-                Verify Currency Status
+            <div class="input-hint">Format: 1 digit + 2 alphanumeric + 6 digits</div>
+            <button class="btn-primary" id="submitBtn" onclick="submitScan()">
+                Log This Sighting
             </button>
         </div>
 
-        <div id="resultPanel" class="result-panel">
-            <div class="status-badge-container">
-                <div>
-                    <div class="section-label" style="margin: 0;">Ledger Verdict</div>
-                    <div style="font-size: 16px; font-weight: 700; margin-top: 2px;">Authentic Banknote</div>
-                </div>
-                <div class="status-tag">Valid & In-Region</div>
-            </div>
-            
-            <div class="meta-row">
-                <span class="meta-label">HSM HMAC Hash:</span>
-                <span class="meta-val" id="hashDisplay">8f3a...c92b</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">Geohash Grid:</span>
-                <span class="meta-val">2.5km Coarse Blur</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">Velocity Check:</span>
-                <span class="meta-val" style="color: var(--success);">Normal (&lt; 1.2/day)</span>
-            </div>
-        </div>
+        <div id="resultPanel" class="result-panel"></div>
 
         <div class="timeline-card">
-            <div class="section-label">Sample Note Journey</div>
-            <div style="margin-top: 12px;">
-                <div class="step">
-                    <div class="step-icon">1</div>
-                    <div class="step-content">
-                        <div class="step-title">Vault Issuance</div>
-                        <div class="step-time">Kolkata Currency Chest • 12 Days ago</div>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-icon">2</div>
-                    <div class="step-content">
-                        <div class="step-title">Mandatory Institutional Touchpoint</div>
-                        <div class="step-time">HP Petrol Pump Node • 3 Days ago</div>
-                    </div>
-                </div>
-                <div class="step">
-                    <div class="step-icon">3</div>
-                    <div class="step-content">
-                        <div class="step-title">Current Scan Node</div>
-                        <div class="step-time">Guwahati Commercial Node • Just Now</div>
-                    </div>
-                </div>
+            <div class="section-label">Trail</div>
+            <div id="timelineBody" style="margin-top: 12px;">
+                <div class="empty-note">Log a serial number to see its scan history here.</div>
             </div>
         </div>
     </main>
@@ -394,53 +237,177 @@
     <nav>
         <a href="#" class="nav-item active">
             <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            Verify
+            Log
         </a>
         <a href="#" class="nav-item">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 20l-5-4V4l5 4 5-4 5 4v12l-5-4-5 4z"/></svg>
-            Journey
-        </a>
-        <a href="#" class="nav-item">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            Stats
+            Trail
         </a>
     </nav>
 
-    <script>
-        let selectedDenom = 500;
+    <script type="module">
+        import { isValidSerialFormat, captureGeohash6 } from '/ocr-engine.js';
 
-        function selectDenom(amount, element) {
+        const API_BASE = '';
+
+        let selectedDenom = 500;
+        window.selectDenom = function (amount, element) {
             selectedDenom = amount;
             document.querySelectorAll('.denom-btn').forEach(btn => btn.classList.remove('active'));
             element.classList.add('active');
-        }
+        };
 
-        function formatSerial(input) {
+        window.formatSerial = function (input) {
             let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-            if (val.length > 3) {
-                val = val.substring(0, 3) + ' ' + val.substring(3, 9);
-            }
+            if (val.length > 3) val = val.substring(0, 3) + ' ' + val.substring(3, 9);
             input.value = val;
+        };
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str ?? '';
+            return div.innerHTML;
         }
 
-        function verifyNote() {
-            const input = document.getElementById('serialInput').value;
-            if (input.length < 8) {
-                alert('Kripya valid 9-digit Serial Number darj karein (e.g. 4AA 123456)');
+        function renderTrail(trail) {
+            const body = document.getElementById('timelineBody');
+            if (!trail || trail.length === 0) {
+                body.innerHTML = '<div class="empty-note">No sightings recorded yet for this note.</div>';
+                return;
+            }
+            body.innerHTML = trail.map((s, i) => `
+                <div class="step">
+                    <div class="step-icon">${i + 1}</div>
+                    <div class="step-content">
+                        <div class="step-title">${escapeHtml(s.city_label || s.geohash6)} · ${escapeHtml(s.scan_source)}</div>
+                        <div class="step-time">${new Date(s.scanned_at).toLocaleString()}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderResult({ ok, message, tagClass, tagText, meta }) {
+            const panel = document.getElementById('resultPanel');
+            panel.style.display = 'block';
+            panel.innerHTML = `
+                <div class="status-badge-container">
+                    <div>
+                        <div class="section-label" style="margin: 0;">Result</div>
+                        <div style="font-size: 16px; font-weight: 700; margin-top: 2px;">${escapeHtml(message)}</div>
+                    </div>
+                    <div class="status-tag ${tagClass}">${escapeHtml(tagText)}</div>
+                </div>
+                ${meta.map(([label, val]) => `
+                    <div class="meta-row">
+                        <span class="meta-label">${escapeHtml(label)}:</span>
+                        <span class="meta-val">${escapeHtml(val)}</span>
+                    </div>
+                `).join('')}
+            `;
+            panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function checkHealth() {
+            const statusEl = document.getElementById('nodeStatus');
+            const textEl = document.getElementById('nodeStatusText');
+            try {
+                const res = await fetch(`${API_BASE}/healthz`);
+                const data = await res.json();
+                if (data.ok) {
+                    statusEl.classList.remove('offline');
+                    textEl.textContent = 'API Online';
+                    return;
+                }
+                throw new Error('not ok');
+            } catch {
+                statusEl.classList.add('offline');
+                textEl.textContent = 'API Unreachable';
+            }
+        }
+
+        window.submitScan = async function () {
+            const serialInput = document.getElementById('serialInput');
+            const raw = serialInput.value.trim().toUpperCase();
+            const btn = document.getElementById('submitBtn');
+
+            if (!isValidSerialFormat(raw)) {
+                alert('Enter a valid serial (e.g. 4AA 123456)');
                 return;
             }
 
-            const resultPanel = document.getElementById('resultPanel');
-            const hashDisplay = document.getElementById('hashDisplay');
+            btn.disabled = true;
+            btn.textContent = 'Getting location…';
 
-            // Generate mock HMAC SHA256 hash preview
-            const mockHash = Array.from({length: 8}, () => Math.floor(Math.random()*16).toString(16)).join('');
-            hashDisplay.innerText = `e4${mockHash}...7f`;
+            let geohash6;
+            try {
+                geohash6 = await captureGeohash6();
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = 'Log This Sighting';
+                alert('Location permission is required to log a sighting: ' + err.message);
+                return;
+            }
 
-            resultPanel.style.display = 'block';
-            resultPanel.scrollIntoView({ behavior: 'smooth' });
+            btn.textContent = 'Submitting…';
+
+            const form = new FormData();
+            form.append('serial_number', raw);
+            form.append('geohash6', geohash6);
+            form.append('scan_source', 'citizen');
+            form.append('denom', String(selectedDenom));
+
+            try {
+                const res = await fetch(`${API_BASE}/v1/scans`, { method: 'POST', body: form });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    renderResult({
+                        message: 'Could not log sighting',
+                        tagClass: 'err',
+                        tagText: data.error || 'error',
+                        meta: [],
+                    });
+                } else if (data.duplicate_today) {
+                    renderResult({
+                        message: 'Already logged today',
+                        tagClass: 'dupe',
+                        tagText: 'Duplicate',
+                        meta: [
+                            ['Serial', data.serial_number],
+                            ['Total sightings', String(data.trail?.length ?? '—')],
+                        ],
+                    });
+                } else {
+                    renderResult({
+                        message: data.status === 'first' ? 'First recorded sighting' : 'Sighting logged',
+                        tagClass: '',
+                        tagText: data.status === 'first' ? 'New note' : 'Returning note',
+                        meta: [
+                            ['Serial', data.serial_number],
+                            ['Geohash cell', geohash6],
+                            ['Total sightings', String(data.trail?.length ?? '—')],
+                        ],
+                    });
+                }
+                renderTrail(data.trail);
+            } catch (err) {
+                renderResult({
+                    message: 'Network error',
+                    tagClass: 'err',
+                    tagText: 'offline',
+                    meta: [['Detail', err.message]],
+                });
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Log This Sighting';
+            }
+        };
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
         }
+
+        checkHealth();
     </script>
 </body>
     </html>
-                
